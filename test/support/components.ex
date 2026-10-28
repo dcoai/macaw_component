@@ -118,3 +118,31 @@ defmodule Macaw.Component.Test.BadParameters do
   @impl true
   def render(:content, _assigns), do: {:safe, ""}
 end
+
+defmodule Macaw.Component.Test.Package do
+  @moduledoc false
+  # A package: two components and a member of another behavior.
+  def __members__, do: [Macaw.Component.Test.Cards, String, Macaw.Component.Test.Fixed]
+end
+
+defmodule Macaw.Component.Test.Clash do
+  @moduledoc false
+  # A component named and hooked as Cards is.
+  use Macaw.Component,
+    name: "test.cards",
+    kinds: [:content],
+    hooks: %{"Cards" => "priv/static/other.js"}
+
+  @impl true
+  def render(:content, _assigns), do: {:safe, ""}
+end
+
+defmodule Macaw.Component.Test.ClashPackage do
+  @moduledoc false
+  def __members__, do: [Macaw.Component.Test.Cards, Macaw.Component.Test.Clash, NoSuchMember]
+end
+
+defmodule Macaw.Component.Test.OtherPackage do
+  @moduledoc false
+  def __members__, do: [Macaw.Component.Test.Clash]
+end

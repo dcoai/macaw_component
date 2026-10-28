@@ -1,10 +1,6 @@
 # 03 — Packages {#packages}
 
-<!-- surfex: deferred #148: packages -->
-
 ## 1. The package side of the registry {#components-packages}
-
-<!-- surfex: deferred #148: packages -->
 
 A host enables what pages may name **by package**, and the registry is explicit and closed by default ([macaw_compose 12 §1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/12-registry.md#registry-model)). Enabling packages, the boot-time duplicate check across them and resolving names in documents are the host's, `macaw`'s. **What a package provides is this library's**, so every package is read the same way by every host:
 - **A package is a module with `__members__/0`,** the list of its member modules: the explicit list a runtime that can't introspect calls. One package may hold components, sources, transforms and aggregates together; each behavior's registry reads its own members. A package's author never maintains a second list (macaw_compose#22, R17).
@@ -19,14 +15,14 @@ A host enables what pages may name **by package**, and the registry is explicit 
 
 `macaw`'s built-in components are a package too, enabled like any other.
 
-```planned-test:packages-components
+```test:packages-components
 a package's components are its members that use Macaw.Component, in order, with their static declarations; members of other behaviors are skipped
 ```
 
-```planned-test:packages-faults
+```test:packages-faults
 a module without __members__, a member that can't load and two components of one name are faults, every one at once; check/1 agrees with components/1
 ```
 
-```planned-test:packages-hooks
+```test:packages-hooks
 hooks/1 collects the hooks of the listed packages by name and refuses two of one name
 ```
