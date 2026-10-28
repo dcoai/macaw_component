@@ -205,6 +205,33 @@ defmodule Macaw.Component do
     Enum.all?(@transitions, fn {name, arity} -> function_exported?(module, name, arity) end)
   end
 
+  @doc "A contained component's `init/2` (spec/02 §7)."
+  @spec init(module(), map(), Macaw.Component.Context.t()) :: value()
+  def init(module, settings, %Macaw.Component.Context{} = context),
+    do: contained!(module).init(settings, context)
+
+  @doc "A contained component's `delivery/3` (spec/02 §7)."
+  @spec delivery(module(), value(), String.t(), Macaw.Data.Delivery.t()) :: value()
+  def delivery(module, value, slot, delivery),
+    do: contained!(module).delivery(value, slot, delivery)
+
+  @doc "A contained component's `size/2` (spec/02 §7)."
+  @spec size(module(), value(), {number(), number()}) :: value()
+  def size(module, value, size), do: contained!(module).size(value, size)
+
+  @doc "A contained component's `bound/3` (spec/02 §7)."
+  @spec bound(module(), value(), String.t(), term()) :: value()
+  def bound(module, value, name, new), do: contained!(module).bound(value, name, new)
+
+  defp contained!(module) do
+    contained?(module) ||
+      raise ArgumentError,
+            "#{inspect(module)} is not a contained component: it lacks the transitions " <>
+              "init/2, delivery/3, size/2 and bound/3 (spec/02 §7)"
+
+    module
+  end
+
   @doc "A fault as a line a person reads."
   @spec format_fault(fault()) :: String.t()
   def format_fault({[], reason}), do: words(reason)

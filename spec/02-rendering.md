@@ -1,12 +1,8 @@
 # 02 — Rendering {#rendering}
 
-<!-- surfex: deferred #147: rendering -->
-
 How a component renders: with what (§1, §2), in which modes (§3), to which rules (§4, §5), in which drawn state (§6), and, for a `:contained` component, from what value (§7). The client-side protocols every adopter shares are §8.
 
 ## 1. The assigns {#components-assigns}
-
-<!-- surfex: deferred #147: rendering -->
 
 `render(kind, assigns)` receives a map with these atom keys, built by `Macaw.Component.Assigns.new/1`, which refuses a missing key or one it doesn't know (`{:error, faults}`):
 
@@ -21,13 +17,11 @@ How a component renders: with what (§1, §2), in which modes (§3), to which ru
 
 A HEEx render reads them as `@context`, `@settings` and so on. Nothing else reaches a component: not the viewer, not another component, not the page.
 
-```planned-test:assigns-keys
+```test:assigns-keys
 assigns are built from the six keys, a missing or unknown key is a fault, and a pure component's value is nil
 ```
 
 ## 2. The context {#components-context}
-
-<!-- surfex: deferred #147: rendering -->
 
 `%Macaw.Component.Context{}`, built by `Macaw.Component.Context.new/1` from a keyword list or a map, every fault at once:
 
@@ -48,17 +42,15 @@ assigns are built from the six keys, a missing or unknown key is a fault, and a 
 - **`Context.heading(context, depth)`** is the heading element for a heading `depth` levels below the component's top (`0` for its top), `"h<level + depth>"`, never past `"h6"`, so a component never hard-codes a level.
 - **`Context.id(context, local)`** is an element id unique to the instance, `"<instance>-<local>"`, `local` a non-empty string of letters, digits, `-` and `_`; so two instances never share an id and an id is stable across renders (§5).
 
-```planned-test:context-new
+```test:context-new
 a context defaults its font size, level, theme and preferences; every bad field is a fault at once; an unknown field is a fault
 ```
 
-```planned-test:context-helpers
+```test:context-helpers
 heading/2 counts from the context's level and stops at h6; id/2 prefixes the instance and refuses a bad local part
 ```
 
 ## 3. Rendering modes {#web-modes}
-
-<!-- surfex: deferred #147: rendering -->
 
 The modes and each mode's rules are `macaw_component`'s (macaw_compose#137): a component renders socketless, neutral and print without a page. Choosing a page's mode is the core's and `macaw_live`'s.
 
@@ -82,7 +74,7 @@ The modes and each mode's rules are `macaw_component`'s (macaw_compose#137): a c
 
 A socketless render keeps its hooks because it is also the first render of a live page: the hooks attach when the socket connects, and do nothing until then. An unknown mode or feature raises `ArgumentError`: it is a programming error, not data.
 
-```planned-test:modes-table
+```test:modes-table
 all/0 is the four modes in order and allows?/2 answers the table for every mode and feature, raising for an unknown one
 ```
 
@@ -126,8 +118,6 @@ the kit finds each rule broken by a render that breaks it, and nothing in a rend
 
 ## 6. Drawn states {#components-states}
 
-<!-- surfex: deferred #147: rendering -->
-
 **Every component is always in exactly one drawn state:** `crashed`, `down`, `invalid`, `loading`, `no_data`, `stale`, `capped` or `live`, in that precedence. `capped` says the rows drawn are fewer than the data: the source capped them, the runtime reduced them, or the component drew fewer than it was handed. Each has a theme role, a glyph and words, and is never blank. (visualize.md C3.)
 
 `Macaw.Component.Drawn`:
@@ -138,13 +128,11 @@ the kit finds each rule broken by a render that breaks it, and nothing in a rend
 
 How a host computes the state from deliveries and faults (a delivery's `capped` and `reduced_by`, its age against the source's continuity, a crashed process) is the host's.
 
-```planned-test:drawn-states
+```test:drawn-states
 all/0 is the eight in precedence order and pick/1 the highest of a list; every state but live has a role, a glyph and words; the static notice is never blank and is not a live region
 ```
 
 ## 7. The contained value {#components-contained}
-
-<!-- surfex: deferred #147: rendering -->
 
 **A `:contained` component, one with server work, is a pure value with transitions** (macaw_compose#22, R6):
 
@@ -160,13 +148,11 @@ render(kind, assigns)            → markup     # assigns.value is the value
 - **The process around the value is the host's:** under Macaw, `macaw_live`'s contained cell, heap-limited and restarted with a backoff, shown as `crashed` meanwhile; in an adopter's own host, whatever it uses (a LiveView's assigns, a test). The value never knows which. (visualize.md C13; dcotek_web.md C13.)
 - **The dispatch functions** `Macaw.Component.init/3`, `delivery/4`, `size/3` and `bound/4` call a contained component's transitions, refusing a `:pure` component with `ArgumentError`.
 
-```planned-test:contained-transitions
+```test:contained-transitions
 a contained component's value moves through init, delivery, size and bound, and the dispatch functions refuse a pure component
 ```
 
 ## 8. The client protocols {#components-client}
-
-<!-- surfex: deferred #147: rendering -->
 
 Two things on the client are **found, not created per component**, so a component behaves the same on a Macaw page and off one, and two standalone components, or one beside a Macaw surface, share them ([macaw_compose 10 §4, §6](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-a11y)). Their fixed names are `Macaw.Component.Client`'s:
 - **the announcer:** `announcer_ids/0` is `%{polite: "mw-announcer-polite", assertive: "mw-announcer-assertive"}`. The first hook to mount on a page without them creates the two regions at the end of the body; every later one reuses them. A hook requests an announcement by dispatching `announce_event/0`, `"macaw:announce"`, on its element with detail `{name, text, politeness}`; a server request is an event carrying 01 §1.6's request;
@@ -174,6 +160,6 @@ Two things on the client are **found, not created per component**, so a componen
 
 A shared static module implementing both for hooks is its own proposal (macaw_compose#142).
 
-```planned-test:client-names
+```test:client-names
 the announcer's ids, the announce event's name and the bus's name are the fixed values every adopter uses
 ```
