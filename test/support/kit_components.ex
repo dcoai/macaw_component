@@ -314,3 +314,68 @@ defmodule Macaw.Component.Test.Broken.Scene do
   @impl true
   def render(:content, _assigns), do: {:safe, "<p>Scene</p>"}
 end
+
+defmodule Macaw.Component.Test.Chart do
+  @moduledoc false
+  # A visual: an SVG image, named and described, a table beside it, one tab stop, and a
+  # drawn token that follows the data. Its "flaw" setting breaks one visual rule.
+  use Macaw.Component, name: "test.chart", kinds: [:content]
+  alias Macaw.Component.{Context, Drawn, Mode}
+
+  @flaws ~w(none no_image unnamed_image undescribed no_table unnamed_table unscoped
+            two_stops no_token constant_token canvas_everywhere)
+
+  def flaws, do: @flaws
+
+  @impl true
+  def parameters, do: %{"flaw" => %{type: :category, values: @flaws, default: "none"}}
+
+  @impl true
+  def declarations(_settings),
+    do:
+      {:ok,
+       slots: %{"points" => %{requires: %{"v" => %{type: :number}}}},
+       events: ["pick"],
+       reading: :scan}
+
+  @impl true
+  def render(:content, %{drawn: drawn, context: ctx}) when drawn != :live,
+    do: Drawn.render(drawn, ctx)
+
+  def render(:content, %{settings: %{"flaw" => flaw}, context: ctx, deliveries: deliveries}) do
+    rows = deliveries |> Map.fetch!("points") |> Macaw.Data.Delivery.rows()
+    desc = Context.id(ctx, "desc")
+    token = if flaw == "constant_token", do: "t", else: Integer.to_string(:erlang.phash2(rows))
+
+    token_attr =
+      if Mode.allows?(ctx.mode, :tokens) and flaw != "no_token",
+        do: ~s( data-mw-token="#{token}"),
+        else: ""
+
+    name = if flaw == "unnamed_image", do: "", else: ~s( aria-label="Values")
+    described = if flaw == "undescribed", do: "", else: ~s( aria-describedby="#{desc}")
+    role = if flaw == "no_image", do: "", else: ~s( role="img")
+    stop = if flaw == "two_stops", do: ~s(<button type="button">Zoom</button>), else: ""
+    canvas = if flaw == "canvas_everywhere", do: "<canvas></canvas>", else: ""
+
+    image =
+      ~s(<svg#{role}#{name}#{described} tabindex="0" viewBox="0 0 100 50"#{token_attr}>) <>
+        Enum.map_join(Enum.with_index(rows), "", fn {%{v: v}, i} ->
+          ~s(<rect x="#{i * 10}" y="0" width="8" height="#{v}" fill="var\(--mw-series-1\)"></rect>)
+        end) <>
+        "</svg>"
+
+    caption = if flaw == "unnamed_table", do: "", else: "<caption>Values</caption>"
+    scope = if flaw == "unscoped", do: "", else: ~s( scope="col")
+
+    table =
+      if flaw == "no_table",
+        do: "",
+        else:
+          ~s(<table>#{caption}<thead><tr><th#{scope}>Value</th></tr></thead><tbody>) <>
+            Enum.map_join(rows, "", fn %{v: v} -> "<tr><td>#{v}</td></tr>" end) <>
+            "</tbody></table>"
+
+    {:safe, image <> canvas <> stop <> ~s(<p id="#{desc}">#{length(rows)} values</p>) <> table}
+  end
+end

@@ -73,8 +73,6 @@ the kit runs every fixture and names a finding by its fixture; defaults fill a b
 
 ## 4. Check sets {#components-kit-sets}
 
-<!-- surfex: deferred #150: the visual check set -->
-
 A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after the twelve, for each fixture, and their findings are shaped like any other's.
 
 **The visual check set**, `:visual`, for components that draw data (visualize's visuals):
@@ -84,11 +82,11 @@ A **check set** adds checks for a family of components. `check_sets/0` lists the
 | `:image` | the drawing is a `role="img"` element (an `<svg role="img">` or another element), named, with a description: an `aria-describedby` naming an element of the render, or an SVG `<desc>` |
 | `:table` | a `<table>` beside it in the render, named by a `<caption>` or `aria-label`, whose header cells are `<th>` with `scope` |
 | `:tab_stop` | the render holds exactly one tab stop in live mode |
-| `:token` | the drawing carries `data-mw-token` in live and socketless mode; two renders of one assigns carry one token, and renders of different deliveries carry different ones (the drawn-token rule, [macaw_data 01 §8.1](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event-rules)) |
+| `:token` | the drawing carries `data-mw-token` in live and socketless mode; two renders of one assigns carry one token, and two fixtures with equal settings and different deliveries carry different ones (the drawn-token rule, [macaw_data 01 §8.1](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event-rules)). A fixture set with no such pair is `{:no_probe, :token}`: the set must give the check two deliveries to tell apart |
 | `:svg` | socketless, neutral and print each render an `<svg>`, and no `<canvas>` |
 
 **Adopters run it** in their own CI whenever `macaw_component` is present (visualize#946).
 
-```planned-test:kit-visual
+```test:kit-visual
 the visual set finds a drawing without a role, name or description, no table or one without scoped headers, other than one tab stop, a token that doesn't follow the data, and a canvas outside live
 ```

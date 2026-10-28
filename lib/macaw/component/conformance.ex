@@ -22,7 +22,7 @@ if Code.ensure_loaded?(LazyHTML) do
     failure, with its stacktrace.
     """
 
-    alias Macaw.Component.Conformance.{Checks, Render}
+    alias Macaw.Component.Conformance.{Checks, Render, Visual}
 
     @checks [
       :declarations,
@@ -40,7 +40,7 @@ if Code.ensure_loaded?(LazyHTML) do
     ]
 
     # Check sets by name, in order: `{set, checks}`.
-    @sets []
+    @sets [visual: Macaw.Component.Conformance.Visual.checks()]
     @options [:fixtures, :check_sets, :theme, :size, :now]
 
     @typedoc "A finding: the check, then where (the fixture, kind and mode) and what failed."
@@ -89,7 +89,9 @@ if Code.ensure_loaded?(LazyHTML) do
       Macaw.Component.component?(component) ||
         raise ArgumentError, "#{inspect(component)} is not a component"
 
-      Checks.run(check, component, opts)
+      if check in Visual.checks(),
+        do: check |> Visual.run(component, opts) |> Enum.uniq() |> Enum.map(&{check, &1}),
+        else: Checks.run(check, component, opts)
     end
 
     defp options!(opts) do

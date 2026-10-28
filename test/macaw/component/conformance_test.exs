@@ -52,7 +52,7 @@ defmodule Macaw.Component.ConformanceTest do
                :contained
              ]
 
-    assert Conformance.check_sets() == []
+    assert Conformance.check_sets() == [:visual]
     [set] = Enum.shuffle([:audio])
     assert_raise ArgumentError, ~r/not a check set/, fn -> Conformance.checks(set) end
 

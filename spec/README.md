@@ -7,9 +7,9 @@ Each Macaw library has its own spec in its own repository (dco-tek/macaw_compose
 | File | Covers | Status |
 |---|---|---|
 | [00 — Overview](00-overview.md) | what `macaw_component` holds, what it depends on, the order it is built in, stability | |
-| [01 — The contract](01-contract.md) | the behavior, names and kinds, parameters, declarations: slots, budget, state, events, announcements, observation, shortcuts, reading load, assets, hooks, proxy routes, isolation, access | v0.1.0 (order-of-work step 8.1) |
-| [02 — Rendering](02-rendering.md) | the assigns, the context, the rendering modes, kinds' output rules, the rendering rules, drawn states, the contained value | v0.1.0 |
-| [03 — Packages](03-packages.md) | the package side of the registry: members, introspection, names | v0.1.0 |
-| [04 — The conformance kit](04-conformance.md) | the component kit, its checks, fixtures and check sets, the visual check set | v0.1.0 |
+| [01 — The contract](01-contract.md) | the behavior, names and kinds, parameters, declarations: slots, budget, state, events, announcements, observation, shortcuts, reading load, assets, hooks, proxy routes, isolation, access | implemented (v0.1.0, order-of-work step 8.1) |
+| [02 — Rendering](02-rendering.md) | the assigns, the context, the rendering modes, kinds' output rules, the rendering rules, drawn states, the contained value | implemented (v0.1.0) |
+| [03 — Packages](03-packages.md) | the package side of the registry: members, introspection, names | implemented (v0.1.0) |
+| [04 — The conformance kit](04-conformance.md) | the component kit, its checks, fixtures and check sets, the visual check set | implemented (v0.1.0) |
 
 Sections keep the anchors they had in the family spec (`components-*`, `web-modes`), so links into them stay stable; [macaw_compose 05](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/05-components.md) keeps what is the core's (cells, containers as surfaces, the built-in components) and points here for the rest.
