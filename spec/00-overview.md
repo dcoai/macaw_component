@@ -20,6 +20,6 @@
 
 ## 3. Order of work and stability {#component-order}
 
-Built as step 8.1 of the family's order of work ([macaw_compose 00 §5](https://github.com/dcoai/macaw/blob/main/spec/00-overview.md#overview-order)), before the core's surfaces, because visualize's visuals implement it (visualize#946) and the core's own components are written against it. Released by git tag, then on Hex with the rest of the family at the owner's coordinated release.
+Built as step 8.1 of the family's order of work ([macaw_compose 00 §5](https://github.com/dcoai/macaw/blob/main/spec/00-overview.md#overview-order)), before the core's surfaces, because visualize's visuals implement it (visualize#946) and the core's own components are written against it. Released by git tag until v0.1.1, and on Hex from v0.1.2, with the rest of the family at the owner's coordinated release (macaw#155).
 
 **The contract is unstable until two implementers pass its kit:** the core's built-in table and visualize's visuals. Until then it is released at 0.x, every minor version may change it, and its documentation says so. Changes found by an implementer are proposals on dco-tek/macaw_compose.

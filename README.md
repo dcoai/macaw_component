@@ -32,4 +32,10 @@ defmodule MyApp.CardsConformanceTest do
 end
 ```
 
+From Hex:
+
+```elixir
+{:macaw_component, "~> 0.1.2"}
+```
+
 The specification is in [`spec/`](https://github.com/dcoai/macaw_component/blob/main/spec/README.md).
