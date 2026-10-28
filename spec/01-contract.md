@@ -1,12 +1,8 @@
 # 01 — The contract {#contract}
 
-<!-- surfex: deferred #146: the contract -->
-
 A **component** is a registered implementation of one public contract, `Macaw.Component`. Built-in and third-party components use the same contract ([macaw_compose 00](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/00-overview.md#overview-goals) goal 8). Each declaration buys a composition effect (goal 1, rule 1): a proposed addition to the contract states which effect it enables, or it doesn't belong.
 
 ## 1. The behavior {#components-behavior}
-
-<!-- surfex: deferred #146: the contract -->
 
 A component is a module that uses `Macaw.Component`:
 
@@ -72,21 +68,19 @@ end
 
 **Errors are values; renders are not guarded.** A component's raise in `render/2` or a transition is a crash its host's process takes, shown as the `crashed` drawn state (02 §6). Nothing in this library catches it.
 
-```planned-test:behavior-use
+```test:behavior-use
 use defines __component__/0 from its options, refuses a missing name or kinds, an unknown option, a name that is not dotted lower-case words, an empty or unknown or duplicated kind, at compile time; the optional callbacks default
 ```
 
-```planned-test:behavior-dispatch
+```test:behavior-dispatch
 component?/1 and info/1 tell a component from another module; parameters/1 checks every parameter by name; settings/2 validates and fills defaults; budget/4 answers nil without budget/3 and refuses a bad answer
 ```
 
-```planned-test:behavior-declarations
+```test:behavior-declarations
 declarations/2 validates settings before calling the component, builds its answer, and answers a bad_declarations fault for an answer of neither shape; faults format as lines
 ```
 
 ### 1.1 Parameters {#components-parameters}
-
-<!-- surfex: deferred #146: the contract -->
 
 A component's settings schema is a map of **parameters**, one shape for every component, so the registry, the page validator, builder forms and an AI author read one form (macaw_compose#15). **The shape, `conforms?/2` and its validation are `Macaw.Data.Parameter`'s**, specified in [macaw_data 01 §2.2](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-parameters): sources take parameters before any component exists, so macaw_data owns the shape and components use it (the owner's decision, 2026-10-27, macaw_compose#109). What follows is how components use it.
 
@@ -104,13 +98,11 @@ A parameter's value in a document is a literal, or, when the parameter is `binda
 - **A change to a bound parameter re-applies the component:** the host passes the new value through `bound/3` (02 §7), or, for a `:pure` component, renders it with the new settings. It re-fetches only when the slot's budget changes.
 - A design variable in visualize is a parameter (visualize#889); old untyped variables migrate as type `:term`.
 
-```planned-test:parameters-static
+```test:parameters-static
 declarations/2 calls declarations/1 with every bindable parameter at its default whatever the settings give, and a parameter with a bad declaration or name is a fault at its name
 ```
 
 ### 1.2 Declarations {#components-declares}
-
-<!-- surfex: deferred #146: the contract -->
 
 `Macaw.Component.Declarations.new(answer, module)` builds the configured declarations from `declarations/1`'s answer, a keyword list or a map with atom keys, into `%Macaw.Component.Declarations{}`, checking every key, every fault at once; a key not in this table is `:unknown_key` at its path. `keys/0` is the keys in this table's order.
 
@@ -136,17 +128,15 @@ The static declarations (§1) and the render (02) complete what a component decl
 
 **`declarations/1` is pure:** no I/O, no clock, no process. Equal settings give equal declarations. Because it runs at validation, the page DAG, the CSP plan, the observation plan and every budget ceiling exist before anything renders. The kit checks purity by calling it twice per fixture (04 §2).
 
-```planned-test:declares-defaults
+```test:declares-defaults
 an empty answer builds the defaults of every key, keys/0 is the thirteen in order, and a keyword list and a map build the same declarations
 ```
 
-```planned-test:declares-faults
+```test:declares-faults
 an unknown key, and a bad value under each key, are each a fault at its path, every one at once, ordered by path; no atom is made from a name
 ```
 
 ### 1.3 Slots {#components-slots}
-
-<!-- surfex: deferred #146: the contract -->
 
 A **slot** is a typed input: `%{requires: %{role => requirement}, doc: "…"}`. Each **role** is a field the component reads from the slot's source, with what it requires of that field:
 
@@ -171,17 +161,15 @@ A slot's `doc` is optional; a slot with no roles reads whole rows (a table showi
 
 Binding a slot (choosing its source and fields in a document) is the core's ([macaw_compose 06](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/06-pages.md)); the check is here, so a component author and every host check bindings the same way.
 
-```planned-test:slots-shape
+```test:slots-shape
 a slot of roles with every requirement key builds; a bad type, a non-boolean flag, an unknown quantity or key is a fault at its path
 ```
 
-```planned-test:slots-check
+```test:slots-check
 a binding passes when every role's field meets its requirements; an unbound window role reads the window field; every fault of a bad binding is reported at its role, every one at once, by either spelling
 ```
 
 ### 1.4 Budget per slot {#components-budget}
-
-<!-- surfex: deferred #146: the contract -->
 
 A component that draws rows declares, for each slot, a **row budget** as a function of its settings and its measured size: `budget(slot, settings, size) → rows`, through the optional `budget/3` callback (§1). visualize's derivation (plot width by mark type, with a design override, its D-226, D-227 and D-230) is one implementation. It is called at runtime, so it may read bindable parameters' current values.
 
@@ -190,13 +178,11 @@ A component that draws rows declares, for each slot, a **row budget** as a funct
 - **Sources are pooled at the largest budget** among their readers, and each reader is reduced to its own, reporting how (`reduced_by`). Clamping and pooling are the host's ([macaw_data 01 §6](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-budgets)); the budget is the component's.
 - **The budget holds in every mode** (macaw_compose#29), evaluated at that mode's size, never the viewer's window (02 §5).
 
-```planned-test:budget-answers
+```test:budget-answers
 a component's budget is reached through budget/4 for each slot and size, nil without budget/3, and an answer that is not a positive integer or nil is a bad_budget error
 ```
 
 ### 1.5 State a component writes and reads {#components-state}
-
-<!-- surfex: deferred #146: the contract -->
 
 - **`writes`** names the **standard** state sources a component writes and the value type it writes to each: `writes: %{"selection" => :identity, "window" => :window}`. Their meaning is built into the component. It writes them **only by emitting events**; the host applies the event. Any other state source is the page author's, written through a cell action ([macaw_compose 06](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/06-pages.md#pages-actions)).
 - **`local`** names keys in the `:local` scope it shares through the client bus (02 §8), with the domain type each carries: `local: %{"hover" => :time, "brush_band" => :window}`. Pixels never travel on the bus.
@@ -210,17 +196,15 @@ a component's budget is reached through budget/4 for each slot and size, nil wit
 
 The preferences (`theme`, `zone`, `units`, `shortcuts`) are state sources too, but a component never writes them: they reach it in its context (02 §2), and a theme chooser sets one through a cell action.
 
-```planned-test:state-vocabulary
+```test:state-vocabulary
 standard/0 and types/0 are the vocabulary; writes outside it or of a type a source doesn't take are faults; a local key of a type that isn't a domain type is a fault
 ```
 
-```planned-test:state-conforms
+```test:state-conforms
 conforms?/2 accepts each type's values and refuses others: identities scalar or map, windows of both forms with as_of, boxes in degrees, for generated values
 ```
 
 ### 1.6 Events, announcements, observation and shortcuts {#components-events}
-
-<!-- surfex: deferred #146: the contract -->
 
 **Events.** `events` names every event the component emits, in the shared struct, `Macaw.Data.Event` ([macaw_data 01 §8](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event)); each emission carries its initiator.
 - **Event names are unique within one component's declarations** (`{:duplicate, name}`). The events a component declares are every event it emits, including those its runtime raises when its configuration enables them (a visual's `brush`, `select` and `pick`). So a configuration that declares one of those names beside the runtime's is a fault naming both. A component kind's runtime names are reserved by being declared, for that kind only: another kind may use the same name for its own event. There is no namespace and no separate field: `initiator` already separates visitor from system, and one list of names is what view paths and records key on (macaw_compose#73, #91; visualize#955).
@@ -232,17 +216,15 @@ conforms?/2 accepts each type's values and refuses others: identities scalar or 
 
 **Shortcuts.** `shortcuts` lists the page-wide shortcuts the component offers, each `%{key, action, description}`: `key` a `KeyboardEvent.key` value (a single printable character, or a named key such as `"ArrowUp"`), `action` a name, `description` a non-empty string for the help dialog. Two shortcuts on one key in one component are `{:duplicate_key, key}`. The page accepts or drops each, refuses two on one key across a page, and lets the viewer turn off or remap every single-character one; that registry is the host's. **Key bindings that aren't page-wide are focus-scoped** and need no declaration.
 
-```planned-test:events-unique
+```test:events-unique
 a duplicated event name is a fault naming it, emits?/2 answers declared names, and announcement requests are built only for declared names with text and a politeness
 ```
 
-```planned-test:events-observation-shortcuts
+```test:events-observation-shortcuts
 observes takes the vocabulary by atom or spelling and refuses anything else; shortcuts need a key, an action and a description, one per key
 ```
 
 ### 1.7 Reading load {#components-reading}
-
-<!-- surfex: deferred #146: the contract -->
 
 Every component declares its reading load, so attention analysis ([macaw_compose 08](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/08-records.md#records-attention)) treats a chart differently from an article:
 - **`:glance`:** a value, a chart's shape. The default.
@@ -251,42 +233,36 @@ Every component declares its reading load, so attention analysis ([macaw_compose
 
 It may depend on settings, never on delivered data, since it is a declaration: visualize derives `:scan` from a design that draws a table or many series, `:glance` otherwise.
 
-```planned-test:reading-load
+```test:reading-load
 reading is one of the three, glance by default; words is a count only with read
 ```
 
 ### 1.8 Assets, hooks, stylesheets and proxy routes {#components-assets}
 
-<!-- surfex: deferred #146: the contract -->
-
 Everything a component loads comes from `'self'` under the strict policy ([macaw_compose 10 §1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-csp)). A component declares what that needs, and the host serves it.
 - **Client hooks** (static, `hooks:` on `use`): a map from a hook's name, as a LiveView hook is named (`"Cards"`, a capitalized word of letters and digits), to the path of its static file in the component's package, relative (`"priv/static/cards.js"`), ending in `.js`, without `..`. A hook may import sibling files of its package. Macaw adds no build step and no third-party JS; a host imports the enabled packages' hooks in its own JS, which `macaw_live` generates from the registry.
 - **Static assets** (static, `assets:` on `use`): paths of the same form, ending in `.css`, `.svg`, `.png`, `.webp`, `.woff2` or `.json`.
-- **Generated stylesheets** (configured, `stylesheets`): CSS a document defines at runtime, such as a design's motion, under the delivery rule's third case. Each is content-addressed: `Macaw.Component.Stylesheet.path(css)` is `"/assets/" <> hex <> ".css"`, `hex` the lowercase SHA-256 of its bytes, so the same document always yields the same file and base renders capture it. A stylesheet with an `@import` or a `url(` that is not same-origin is `{:stylesheet, index, :origin}`.
-- **Proxy routes** (configured, `proxy_routes`): each `%{name, url, types}`: `url` an `https://` URL template whose `{name}` placeholders the component fills, and `types` the non-empty list of content types it accepts (`"image/png"`). The host mounts the one proxy, enables origins explicitly and refuses everything else ([macaw_compose 10 §1.1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-proxy)); `Macaw.Component.Proxy.path(component, route, values)` is the same-origin path a render uses, `"/macaw/proxy/<component>/<route>?<values>"`, the values query-encoded in name order and every placeholder of the route's template given one (`{:placeholders, missing}` otherwise), so a page holds same-origin URLs only.
+- **Generated stylesheets** (configured, `stylesheets`): CSS a document defines at runtime, such as a design's motion, under the delivery rule's third case. Each is content-addressed: `Macaw.Component.Stylesheet.path(css)` is `"/assets/" <> hex <> ".css"`, `hex` the lowercase SHA-256 of its bytes, so the same document always yields the same file and base renders capture it. A stylesheet with an `@import` or a `url(` that is not same-origin (a `data:` URL is allowed in `url(`) is an `:origin` fault at `[:stylesheets, index]`.
+- **Proxy routes** (configured, `proxy_routes`): each `%{name, url, types}`: `url` an `https://` URL template whose `{name}` placeholders the component fills, and `types` the non-empty list of content types it accepts (`"image/png"`). The host mounts the one proxy, enables origins explicitly and refuses everything else ([macaw_compose 10 §1.1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-proxy)); `Macaw.Component.Proxy.path(component, route, values)` answers `{:ok, path}`, the same-origin path a render uses, `"/macaw/proxy/<component>/<route>?<values>"`, the values query-encoded in name order; a placeholder of the route's template without a value is `{:error, {:placeholders, missing}}`. So a page holds same-origin URLs only.
 
-```planned-test:assets-static
+```test:assets-static
 hooks and assets on use are checked at compile time: names, relative paths without .., known extensions
 ```
 
-```planned-test:assets-configured
+```test:assets-configured
 a stylesheet's path is its SHA-256, the same CSS the same path; a stylesheet importing another origin is a fault; proxy routes need an https template and content types, and their paths are same-origin
 ```
 
 ### 1.9 Isolation and access {#components-isolation}
 
-<!-- surfex: deferred #146: the contract -->
-
 - **`isolation`**: `:pure` components (Markdown, cards) render in the page's process from their settings and deliveries. A **`:contained`** component, one with server work, is a pure value with transitions (02 §7), held by its host in a process of its own. Declaring `:contained` without exporting all four transitions is `{:missing, callbacks}` at `[:isolation]`.
 - **`access`**: the name of the capability a viewer needs to see the component, a non-empty string, or `nil`. The host gates it before rendering, the same way for every component; the component never checks the viewer itself.
 
-```planned-test:isolation-access
+```test:isolation-access
 contained isolation requires the four transitions, naming the missing ones; access is a capability name or nil
 ```
 
 ## 2. Kinds {#components-kinds}
-
-<!-- surfex: deferred #146: the contract -->
 
 A component offers one or more **kinds**, one `render/2` clause per kind:
 
@@ -305,6 +281,6 @@ def render(:content, assigns),    do: ~H"<ul class=\"cards\">…</ul>"
 
 (macaw_compose#8, question 2.)
 
-```planned-test:kinds-clauses
+```test:kinds-clauses
 every declared kind needs a render clause, a catch-all covers them all, a clause for an undeclared kind or a missing render is a compile error, and kinds/0 is the four
 ```

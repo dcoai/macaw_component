@@ -26,6 +26,10 @@ defmodule Macaw.Component.MixProject do
 
   defp deps do
     [
+      # Themes, their roles and cues (spec/00 §2).
+      {:macaw_layers, git: "git@gitlab.conet.yarina.org:dco-tek/macaw_layers.git", tag: "v0.2.0"},
+      # Parameters, schemas, deliveries and the interaction event (spec/00 §2).
+      {:macaw_data, git: "git@gitlab.conet.yarina.org:dco-tek/macaw_data.git", tag: "v0.5.1"},
       # The safe-markup protocol a render answers in (spec/00 §2); not Phoenix, not LiveView.
       {:phoenix_html, "~> 4.1"},
       # The conformance kit reads renders with it, and compiles only when it is present.
