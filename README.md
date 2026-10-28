@@ -1,5 +1,7 @@
 # macaw_component
 
+> **This software is a very early release, and not ready for general use.**
+
 Public home: [github.com/dcoai/macaw_component](https://github.com/dcoai/macaw_component) · Docs: [hexdocs.pm](https://hexdocs.pm/macaw_component)
 
 Macaw's component contract: what a component declares, the kinds it renders as, the context it renders in, the rendering modes and their rules, its drawn states, the package side of the registry, and the component conformance kit.

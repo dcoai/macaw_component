@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The README opens with the early-release notice (macaw#174).
+
 ## v0.1.1 (2026-10-28)
 
 - Dependencies named by their `dco-tek/macaw` group paths, on macaw_data v0.5.2 (macaw#152).
