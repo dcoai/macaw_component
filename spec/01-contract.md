@@ -1,6 +1,6 @@
 # 01 — The contract {#contract}
 
-A **component** is a registered implementation of one public contract, `Macaw.Component`. Built-in and third-party components use the same contract ([macaw_compose 00](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/00-overview.md#overview-goals) goal 8). Each declaration buys a composition effect (goal 1, rule 1): a proposed addition to the contract states which effect it enables, or it doesn't belong.
+A **component** is a registered implementation of one public contract, `Macaw.Component`. Built-in and third-party components use the same contract ([macaw_compose 00](https://github.com/dcoai/macaw/blob/main/spec/00-overview.md#overview-goals) goal 8). Each declaration buys a composition effect (goal 1, rule 1): a proposed addition to the contract states which effect it enables, or it doesn't belong.
 
 ## 1. The behavior {#components-behavior}
 
@@ -31,7 +31,7 @@ end
 
 **Two sorts of declaration** (macaw_compose#22, R2):
 - **Static declarations** are the module's, the same for every use: its **name**, its **kinds** (§2), its **parameters** (§1.1), its **client hooks** and its **static assets** (§1.8). The registry and a host read them without calling the component with settings: kinds to place it, parameters to validate its settings, hooks and assets to serve and import them before any page exists.
-- **Configured declarations** are everything else: the value of the pure function `declarations(settings)`, called with the component's validated settings when a document is validated ([macaw_compose 07](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/07-documents.md#documents-validation-time)). A component whose behavior is fixed returns the same value for any settings; a component whose behavior is data computes it: a visualize visual's slots, events and state writes follow from its design.
+- **Configured declarations** are everything else: the value of the pure function `declarations(settings)`, called with the component's validated settings when a document is validated ([macaw_compose 07](https://github.com/dcoai/macaw/blob/main/spec/07-documents.md#documents-validation-time)). A component whose behavior is fixed returns the same value for any settings; a component whose behavior is data computes it: a visualize visual's slots, events and state writes follow from its design.
 
 **`use Macaw.Component`** takes `name:` and `kinds:`, both required, and `hooks:` and `assets:`, both optional, and nothing else; a missing or unknown option is refused at compile time with an `ArgumentError` naming it. It declares the behavior, defines `__component__/0`, which answers `%{name: name, kinds: kinds, hooks: hooks, assets: assets}`, and defines overridable defaults for the optional callbacks below. The values are checked when the module compiles:
 - **`name`** is the component's name in documents: a string of lower-case words (`[a-z][a-z0-9_]*`) joined by dots, so a package prefixes its components' names with its own (`visualize.visual`). Names are matched by spelling; **no atom is ever made from one**.
@@ -64,7 +64,7 @@ end
 - **`declarations/2`**: settings validated by `settings/2` first, then `declarations/1` called and its answer built by `Macaw.Component.Declarations.new/2` (§1.2): `{:ok, %Declarations{}}` or `{:error, faults}`. An answer of neither shape is `{:error, [{[], {:bad_declarations, answer}}]}`.
 - **`budget/4`**: `{:ok, nil}` for a component without `budget/3`; otherwise `{:ok, rows}` for a positive integer or `nil`, and `{:error, {:bad_budget, answer}}` for anything else.
 
-**Faults** are `{path, reason}` pairs, the path a list of keys from the declaration's root, every fault at once, ordered by path (as in [macaw_data 01 §1.8](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-schema-faults)). `Macaw.Component.format_fault/1` words one as a line a person reads.
+**Faults** are `{path, reason}` pairs, the path a list of keys from the declaration's root, every fault at once, ordered by path (as in [macaw_data 01 §1.8](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-schema-faults)). `Macaw.Component.format_fault/1` words one as a line a person reads.
 
 **Errors are values; renders are not guarded.** A component's raise in `render/2` or a transition is a crash its host's process takes, shown as the `crashed` drawn state (02 §6). Nothing in this library catches it.
 
@@ -82,16 +82,16 @@ declarations/2 validates settings before calling the component, builds its answe
 
 ### 1.1 Parameters {#components-parameters}
 
-A component's settings schema is a map of **parameters**, one shape for every component, so the registry, the page validator, builder forms and an AI author read one form (macaw_compose#15). **The shape, `conforms?/2` and its validation are `Macaw.Data.Parameter`'s**, specified in [macaw_data 01 §2.2](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-parameters): sources take parameters before any component exists, so macaw_data owns the shape and components use it (the owner's decision, 2026-10-27, macaw_compose#109). What follows is how components use it.
+A component's settings schema is a map of **parameters**, one shape for every component, so the registry, the page validator, builder forms and an AI author read one form (macaw_compose#15). **The shape, `conforms?/2` and its validation are `Macaw.Data.Parameter`'s**, specified in [macaw_data 01 §2.2](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-parameters): sources take parameters before any component exists, so macaw_data owns the shape and components use it (the owner's decision, 2026-10-27, macaw_compose#109). What follows is how components use it.
 
 **Parameters are static** (macaw_compose#137): `parameters/0` takes no settings, because settings are validated against it before `declarations/1` is called. A parameter whose legal values depend on data says so with `legal_for: {slot, field, fact}`, which the host that binds the slot resolves; the parameter itself doesn't change.
 
 **Types.** A parameter's `type` is one of:
-- a **data-model type** (`:time`, `:number`, `:category`, `:text`, `:color`, `:point`, [macaw_data 01](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-data));
+- a **data-model type** (`:time`, `:number`, `:category`, `:text`, `:color`, `:point`, [macaw_data 01](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-data));
 - **`{:document, type}`**, a nested document of a document type, validated by its own kernel rules: how a whole visualize design is a cell's settings;
 - **`:term`**, any value the component validates itself in `declarations/1`, allowed only for documents migrated from untyped forms (visualize's old variables), never for new parameters.
 
-A parameter's value in a document is a literal, or, when the parameter is `bindable`, a **binding to a state source**: `bins: {:state, "bins"}` ([macaw_compose 03](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/03-state.md#state-sources)). Binding is closed by default: a parameter is bindable only when its component says so. Resolving a binding is the host's: a component always receives values.
+A parameter's value in a document is a literal, or, when the parameter is `bindable`, a **binding to a state source**: `bins: {:state, "bins"}` ([macaw_compose 03](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-sources)). Binding is closed by default: a parameter is bindable only when its component says so. Resolving a binding is the host's: a component always receives values.
 
 - **A bindable parameter has a default** (`:bindable_without_default`), which is its value until its state source has one.
 - **Declarations never read a bindable parameter,** so a binding can never change the page's shape after validation. `declarations/2` calls `declarations/1` with every bindable parameter at its **default**, whatever the settings give, and the kit checks that changing one changes no declaration (04 §2). The budget is the one exception (§1.4): it is a function evaluated at runtime, under a ceiling fixed at validation.
@@ -109,7 +109,7 @@ declarations/2 calls declarations/1 with every bindable parameter at its default
 | Key | Value | Default | Buys |
 |---|---|---|---|
 | **`slots`** | typed inputs, by name, each with its requirements (§1.3) | `%{}` | any source works; faults found at validation (visualize.md C1) |
-| **`writes`** | the **standard** state sources it writes, each with the value type it writes (§1.5) | `%{}` | interaction without wiring ([macaw_compose 03](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/03-state.md)) |
+| **`writes`** | the **standard** state sources it writes, each with the value type it writes (§1.5) | `%{}` | interaction without wiring ([macaw_compose 03](https://github.com/dcoai/macaw/blob/main/spec/03-state.md)) |
 | **`local`** | the `:local` keys it shares on the client bus, each with its domain type (§1.5) | `%{}` | shared hover and brush without the server |
 | **`events`** | the names of the events it emits (§1.6) | `[]` | accurate view paths; cell actions |
 | **`announces`** | the names of the announcements it may request (§1.6) | `[]` | one coordinated announcer |
@@ -143,8 +143,8 @@ A **slot** is a typed input: `%{requires: %{role => requirement}, doc: "…"}`. 
 | Requirement key | Value | Default | Meaning |
 |---|---|---|---|
 | `type` | one of the six data-model types, or a non-empty list of them | required | the field's type |
-| `window` | a boolean | `false` | the field must be the source's window field ([macaw_data 01 §1.5](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-schema-window)) |
-| `identity` | a boolean | `false` | the field must be declared identity ([§1.4 of the schema](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-schema-identity)) |
+| `window` | a boolean | `false` | the field must be the source's window field ([macaw_data 01 §1.5](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-schema-window)) |
+| `identity` | a boolean | `false` | the field must be declared identity ([§1.4 of the schema](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-schema-identity)) |
 | `quantity` | one of `Macaw.Data.Quantity.all/0` | `nil` | the field must measure it |
 | `many` | a boolean | `false` | the role takes one or more fields (a chart's series) |
 | `optional` | a boolean | `false` | the role may be left unbound |
@@ -159,7 +159,7 @@ A slot's `doc` is optional; a slot with no roles reads whole rows (a table showi
 - `:many`: a list given for a role that takes one field, or an empty list;
 - `:unknown_role`: a role the slot doesn't require.
 
-Binding a slot (choosing its source and fields in a document) is the core's ([macaw_compose 06](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/06-pages.md)); the check is here, so a component author and every host check bindings the same way.
+Binding a slot (choosing its source and fields in a document) is the core's ([macaw_compose 06](https://github.com/dcoai/macaw/blob/main/spec/06-pages.md)); the check is here, so a component author and every host check bindings the same way.
 
 ```test:slots-shape
 a slot of roles with every requirement key builds; a bad type, a non-boolean flag, an unknown quantity or key is a fault at its path
@@ -174,8 +174,8 @@ a binding passes when every role's field meets its requirements; an unbound wind
 A component that draws rows declares, for each slot, a **row budget** as a function of its settings and its measured size: `budget(slot, settings, size) → rows`, through the optional `budget/3` callback (§1). visualize's derivation (plot width by mark type, with a design override, its D-226, D-227 and D-230) is one implementation. It is called at runtime, so it may read bindable parameters' current values.
 
 - **A component without `budget/3`,** and a slot it answers `nil` for, reads at the host ceiling.
-- **The host ceiling clamps every slot.** A slot whose budget exceeds the ceiling reads at the ceiling, reported as `reduced_by: :runtime` ([macaw_data 01](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-delivery)), and draws those rows. A component is never handed nothing because it asked for too much.
-- **Sources are pooled at the largest budget** among their readers, and each reader is reduced to its own, reporting how (`reduced_by`). Clamping and pooling are the host's ([macaw_data 01 §6](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-budgets)); the budget is the component's.
+- **The host ceiling clamps every slot.** A slot whose budget exceeds the ceiling reads at the ceiling, reported as `reduced_by: :runtime` ([macaw_data 01](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-delivery)), and draws those rows. A component is never handed nothing because it asked for too much.
+- **Sources are pooled at the largest budget** among their readers, and each reader is reduced to its own, reporting how (`reduced_by`). Clamping and pooling are the host's ([macaw_data 01 §6](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-budgets)); the budget is the component's.
 - **The budget holds in every mode** (macaw_compose#29), evaluated at that mode's size, never the viewer's window (02 §5).
 
 ```test:budget-answers
@@ -184,15 +184,15 @@ a component's budget is reached through budget/4 for each slot and size, nil wit
 
 ### 1.5 State a component writes and reads {#components-state}
 
-- **`writes`** names the **standard** state sources a component writes and the value type it writes to each: `writes: %{"selection" => :identity, "window" => :window}`. Their meaning is built into the component. It writes them **only by emitting events**; the host applies the event. Any other state source is the page author's, written through a cell action ([macaw_compose 06](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/06-pages.md#pages-actions)).
+- **`writes`** names the **standard** state sources a component writes and the value type it writes to each: `writes: %{"selection" => :identity, "window" => :window}`. Their meaning is built into the component. It writes them **only by emitting events**; the host applies the event. Any other state source is the page author's, written through a cell action ([macaw_compose 06](https://github.com/dcoai/macaw/blob/main/spec/06-pages.md#pages-actions)).
 - **`local`** names keys in the `:local` scope it shares through the client bus (02 §8), with the domain type each carries: `local: %{"hover" => :time, "brush_band" => :window}`. Pixels never travel on the bus.
-- **Exports** are not a component's declaration: the placement document declares them ([macaw_compose 03](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/03-state.md#state-exports)).
+- **Exports** are not a component's declaration: the placement document declares them ([macaw_compose 03](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-exports)).
 - **A component reads state it doesn't write** through a parameter binding (§1.1) or a slot bound to the state source. It never reads another component.
 
 **The vocabulary is `Macaw.Component.State`'s,** so a component and every host agree on it by construction:
 - `standard/0`, the standard state sources and the value types each takes: `"selection"` takes `:identity`; `"window"` takes `:window`; a scene's `"camera"` takes `:camera` and its `"breakpoints"` take `:breakpoints`. A name not among them in `writes` is `{:not_standard, name}`; a type it doesn't take, `{:type, name, type}`.
 - `types/0`, the value and domain types: `:time`, `:number`, `:category`, `:text`, `:point`, `:identity`, `:window`, `:box`, `:camera` and `:breakpoints`. A `local` key's type is one of the first eight.
-- `conforms?(type, value)`: whether a value is of a type. `:identity` is a scalar (a string, a number or an atom other than a boolean) or a non-empty map of field to scalar; `:window` is `nil`, `%{last: seconds}` with positive seconds, or `%{from: a, to: b}` with both instants or both numbers, `a` not after `b`, either form with an optional `as_of` instant; `:box` is `%{west, south, east, north}` in degrees ([macaw_data's box](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-request)); `:camera` is a map and `:breakpoints` a list, whose meaning is the scene's; the data-model types are `Macaw.Data.Parameter.conforms?/2`'s.
+- `conforms?(type, value)`: whether a value is of a type. `:identity` is a scalar (a string, a number or an atom other than a boolean) or a non-empty map of field to scalar; `:window` is `nil`, `%{last: seconds}` with positive seconds, or `%{from: a, to: b}` with both instants or both numbers, `a` not after `b`, either form with an optional `as_of` instant; `:box` is `%{west, south, east, north}` in degrees ([macaw_data's box](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-request)); `:camera` is a map and `:breakpoints` a list, whose meaning is the scene's; the data-model types are `Macaw.Data.Parameter.conforms?/2`'s.
 
 The preferences (`theme`, `zone`, `units`, `shortcuts`) are state sources too, but a component never writes them: they reach it in its context (02 §2), and a theme chooser sets one through a cell action.
 
@@ -206,13 +206,13 @@ conforms?/2 accepts each type's values and refuses others: identities scalar or 
 
 ### 1.6 Events, announcements, observation and shortcuts {#components-events}
 
-**Events.** `events` names every event the component emits, in the shared struct, `Macaw.Data.Event` ([macaw_data 01 §8](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event)); each emission carries its initiator.
+**Events.** `events` names every event the component emits, in the shared struct, `Macaw.Data.Event` ([macaw_data 01 §8](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event)); each emission carries its initiator.
 - **Event names are unique within one component's declarations** (`{:duplicate, name}`). The events a component declares are every event it emits, including those its runtime raises when its configuration enables them (a visual's `brush`, `select` and `pick`). So a configuration that declares one of those names beside the runtime's is a fault naming both. A component kind's runtime names are reserved by being declared, for that kind only: another kind may use the same name for its own event. There is no namespace and no separate field: `initiator` already separates visitor from system, and one list of names is what view paths and records key on (macaw_compose#73, #91; visualize#955).
 - `Declarations.emits?(declarations, name)` says whether a name is declared. A host drops an event whose name is not, and the kit checks that every event a component's fixtures produce is declared (04 §2).
 
-**Announcements.** `announces` names the announcements the component may request. A request is `%{name, text, politeness}`, `politeness` `:polite` or `:assertive`, built by `Macaw.Component.Announcement.new(declarations, attrs)`, which answers `{:ok, request}` or `{:error, faults}`: an undeclared name is `{:undeclared, name}`, empty text `:empty`. Components never render a live region; the announcer is the host's ([macaw_compose 10 §4](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-a11y)), and the client form of the request is 02 §8's.
+**Announcements.** `announces` names the announcements the component may request. A request is `%{name, text, politeness}`, `politeness` `:polite` or `:assertive`, built by `Macaw.Component.Announcement.new(declarations, attrs)`, which answers `{:ok, request}` or `{:error, faults}`: an undeclared name is `{:undeclared, name}`, empty text `:empty`. Components never render a live region; the announcer is the host's ([macaw_compose 10 §4](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)), and the client form of the request is 02 §8's.
 
-**Observation.** `observes` is a subset of the closed vocabulary, `Macaw.Component.observations/0`: `view`, `dwell`, `hover_item`, `focus_item`, `activate`, `select`, `brush`, `copy` and `scroll_into_view`, in that order, given as atoms or their spellings and kept as atoms from the vocabulary. **Nothing is emitted unless the host enables it**, so a component used without a host plan reports nothing ([macaw_compose 10 §5](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-observation)).
+**Observation.** `observes` is a subset of the closed vocabulary, `Macaw.Component.observations/0`: `view`, `dwell`, `hover_item`, `focus_item`, `activate`, `select`, `brush`, `copy` and `scroll_into_view`, in that order, given as atoms or their spellings and kept as atoms from the vocabulary. **Nothing is emitted unless the host enables it**, so a component used without a host plan reports nothing ([macaw_compose 10 §5](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-observation)).
 
 **Shortcuts.** `shortcuts` lists the page-wide shortcuts the component offers, each `%{key, action, description}`: `key` a `KeyboardEvent.key` value (a single printable character, or a named key such as `"ArrowUp"`), `action` a name, `description` a non-empty string for the help dialog. Two shortcuts on one key in one component are `{:duplicate_key, key}`. The page accepts or drops each, refuses two on one key across a page, and lets the viewer turn off or remap every single-character one; that registry is the host's. **Key bindings that aren't page-wide are focus-scoped** and need no declaration.
 
@@ -226,7 +226,7 @@ observes takes the vocabulary by atom or spelling and refuses anything else; sho
 
 ### 1.7 Reading load {#components-reading}
 
-Every component declares its reading load, so attention analysis ([macaw_compose 08](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/08-records.md#records-attention)) treats a chart differently from an article:
+Every component declares its reading load, so attention analysis ([macaw_compose 08](https://github.com/dcoai/macaw/blob/main/spec/08-records.md#records-attention)) treats a chart differently from an article:
 - **`:glance`:** a value, a chart's shape. The default.
 - **`:scan`:** a table, a list, a visual over many items.
 - **`:read`:** prose sections, which may also give a word count in `words`, a non-negative integer. `words` with any other reading load is `:words_without_read`.
@@ -239,11 +239,11 @@ reading is one of the three, glance by default; words is a count only with read
 
 ### 1.8 Assets, hooks, stylesheets and proxy routes {#components-assets}
 
-Everything a component loads comes from `'self'` under the strict policy ([macaw_compose 10 §1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-csp)). A component declares what that needs, and the host serves it.
+Everything a component loads comes from `'self'` under the strict policy ([macaw_compose 10 §1](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-csp)). A component declares what that needs, and the host serves it.
 - **Client hooks** (static, `hooks:` on `use`): a map from a hook's name, as a LiveView hook is named (`"Cards"`, a capitalized word of letters and digits), to the path of its static file in the component's package, relative (`"priv/static/cards.js"`), ending in `.js`, without `..`. A hook may import sibling files of its package. Macaw adds no build step and no third-party JS; a host imports the enabled packages' hooks in its own JS, which `macaw_live` generates from the registry.
 - **Static assets** (static, `assets:` on `use`): paths of the same form, ending in `.css`, `.svg`, `.png`, `.webp`, `.woff2` or `.json`.
 - **Generated stylesheets** (configured, `stylesheets`): CSS a document defines at runtime, such as a design's motion, under the delivery rule's third case. Each is content-addressed: `Macaw.Component.Stylesheet.path(css)` is `"/assets/" <> hex <> ".css"`, `hex` the lowercase SHA-256 of its bytes, so the same document always yields the same file and base renders capture it. A stylesheet with an `@import` or a `url(` that is not same-origin (a `data:` URL is allowed in `url(`) is an `:origin` fault at `[:stylesheets, index]`.
-- **Proxy routes** (configured, `proxy_routes`): each `%{name, url, types}`: `url` an `https://` URL template whose `{name}` placeholders the component fills, and `types` the non-empty list of content types it accepts (`"image/png"`). The host mounts the one proxy, enables origins explicitly and refuses everything else ([macaw_compose 10 §1.1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-proxy)); `Macaw.Component.Proxy.path(component, route, values)` answers `{:ok, path}`, the same-origin path a render uses, `"/macaw/proxy/<component>/<route>?<values>"`, the values query-encoded in name order; a placeholder of the route's template without a value is `{:error, {:placeholders, missing}}`. So a page holds same-origin URLs only.
+- **Proxy routes** (configured, `proxy_routes`): each `%{name, url, types}`: `url` an `https://` URL template whose `{name}` placeholders the component fills, and `types` the non-empty list of content types it accepts (`"image/png"`). The host mounts the one proxy, enables origins explicitly and refuses everything else ([macaw_compose 10 §1.1](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-proxy)); `Macaw.Component.Proxy.path(component, route, values)` answers `{:ok, path}`, the same-origin path a render uses, `"/macaw/proxy/<component>/<route>?<values>"`, the values query-encoded in name order; a placeholder of the route's template without a value is `{:error, {:placeholders, missing}}`. So a page holds same-origin URLs only.
 
 ```test:assets-static
 hooks and assets on use are checked at compile time: names, relative paths without .., known extensions
@@ -275,7 +275,7 @@ def render(:content, assigns),    do: ~H"<ul class=\"cards\">…</ul>"
 
 - **The kinds** are `Macaw.Component.kinds/0`: `:navigation`, `:content`, `:control` and `:container`.
 - **Kinds are checked against the clauses at compile time:** every declared kind has a `render/2` clause whose first argument is that kind or matches any value, and a clause for a kind the component doesn't declare is an error, so a missing clause never fails at runtime. A component without `render/2` doesn't compile.
-- **A cell names its kind,** defaulting from where it sits; validating that the kind is offered and allowed there is the core's ([macaw_compose 05 §5](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/05-components.md#components-containers)).
+- **A cell names its kind,** defaulting from where it sits; validating that the kind is offered and allowed there is the core's ([macaw_compose 05 §5](https://github.com/dcoai/macaw/blob/main/spec/05-components.md#components-containers)).
 - **Each kind carries rules its output is checked against** (02 §4).
 - **Kind and mode are separate axes.** Kind is the argument; mode comes in the context (02 §2). Most components render the same markup in every mode, and the host changes what it wraps around it.
 

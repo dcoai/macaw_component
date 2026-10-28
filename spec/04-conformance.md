@@ -4,7 +4,7 @@
 
 Every component runs **one kit**, `Macaw.Component.Conformance`: the contract of [01](01-contract.md) and the rules of [02](02-rendering.md) as checks, so a component author proves conformance by running it rather than by reading this spec. There is **one kit per contract** (the source kit in `macaw_data`, this one for components, the template and layer checks in `macaw`); adopters add checks as **check sets** (§4), never a kit of their own (macaw_compose#22, R19). It is shipped in `lib/`, so any component author runs it, the way `macaw_data`'s source kit works.
 
-**Two layers**, as in the source kit ([macaw_data 01 §9](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-conformance)):
+**Two layers**, as in the source kit ([macaw_data 01 §9](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-conformance)):
 - `check(check, component, opts)` answers one check's **findings**, `{check, {where, what}}` terms, `[]` for a component that passes: `where` is the fixture's name and the kind and mode the render was made in (`nil` where none applies), and `what` the rule broken; `check(component, opts)` runs every check of `checks/0`, then those of each check set in `check_sets:`; `format/1` words a finding as a line a person reads.
 - `use Macaw.Component.Conformance, component: …` inside a module that uses `ExUnit.Case` writes one test per check, in a `describe` block, failing with the findings. The kit references no ExUnit function itself (`describe`, `test` and `flunk` appear only in the code `use` writes), so it loads in production.
 - `use` refuses a missing `component:` and an unknown option at compile time; `check/3` refuses an unknown check and an unknown option with `ArgumentError`.
@@ -82,7 +82,7 @@ A **check set** adds checks for a family of components. `check_sets/0` lists the
 | `:image` | the drawing is a `role="img"` element (an `<svg role="img">` or another element), named, with a description: an `aria-describedby` naming an element of the render, or an SVG `<desc>` |
 | `:table` | a `<table>` beside it in the render, named by a `<caption>` or `aria-label`, whose header cells are `<th>` with `scope` |
 | `:tab_stop` | the render holds exactly one tab stop in live mode |
-| `:token` | the drawing carries `data-mw-token` in live and socketless mode; two renders of one assigns carry one token, and two fixtures with equal settings and different deliveries carry different ones (the drawn-token rule, [macaw_data 01 §8.1](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event-rules)). A fixture set with no such pair is `{:no_probe, :token}`: the set must give the check two deliveries to tell apart |
+| `:token` | the drawing carries `data-mw-token` in live and socketless mode; two renders of one assigns carry one token, and two fixtures with equal settings and different deliveries carry different ones (the drawn-token rule, [macaw_data 01 §8.1](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event-rules)). A fixture set with no such pair is `{:no_probe, :token}`: the set must give the check two deliveries to tell apart |
 | `:svg` | socketless, neutral and print each render an `<svg>`, and no `<canvas>` |
 
 **Adopters run it** in their own CI whenever `macaw_component` is present (visualize#946).

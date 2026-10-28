@@ -2,7 +2,7 @@
 
 ## 1. The package side of the registry {#components-packages}
 
-A host enables what pages may name **by package**, and the registry is explicit and closed by default ([macaw_compose 12 §1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/12-registry.md#registry-model)). Enabling packages, the boot-time duplicate check across them and resolving names in documents are the host's, `macaw`'s. **What a package provides is this library's**, so every package is read the same way by every host:
+A host enables what pages may name **by package**, and the registry is explicit and closed by default ([macaw_compose 12 §1](https://github.com/dcoai/macaw/blob/main/spec/12-registry.md#registry-model)). Enabling packages, the boot-time duplicate check across them and resolving names in documents are the host's, `macaw`'s. **What a package provides is this library's**, so every package is read the same way by every host:
 - **A package is a module with `__members__/0`,** the list of its member modules: the explicit list a runtime that can't introspect calls. One package may hold components, sources, transforms and aggregates together; each behavior's registry reads its own members. A package's author never maintains a second list (macaw_compose#22, R17).
 - **A member is a component when it uses `Macaw.Component`** (01 §1), read from its own behavior declarations, as `macaw_data`'s registry reads transforms and aggregates. A member of another Macaw behavior is skipped here; its registry is the host's.
 - **Each component registers through `info/1`**: its name, kinds, hooks and assets, read without calling it with settings.

@@ -28,7 +28,7 @@ assigns are built from the six keys, a missing or unknown key is a fault, and a 
 | Field | Value | Default |
 |---|---|---|
 | `mode` | one of the four modes (§3) | required |
-| `instance` | the instance's id ([macaw_compose 01](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/01-vocabulary.md#vocab-structure)), a non-empty string of letters, digits, `-` and `_` | required |
+| `instance` | the instance's id ([macaw_compose 01](https://github.com/dcoai/macaw/blob/main/spec/01-vocabulary.md#vocab-structure)), a non-empty string of letters, digits, `-` and `_` | required |
 | `size` | `{width, height}` in CSS pixels, positive numbers: the measured container, or the placement's declared size until the first measurement | required |
 | `measured` | whether `size` was measured | `false` |
 | `root_font_size` | the root font size in CSS pixels, a positive number | `16` |
@@ -37,8 +37,8 @@ assigns are built from the six keys, a missing or unknown key is a fault, and a 
 | `preferences` | `%{zone, units, shortcuts}`: a time zone name, one of `Macaw.Data.Quantity.systems/0`, and which page shortcuts are on with their keys | `%{zone: "Etc/UTC", units: :as_posted, shortcuts: %{}}` |
 | `now` | the holder's now, a `DateTime`, which events carry as their time | required |
 
-- **The host computes it.** On a page, the core computes each instance's context; elsewhere (a visualize chart in a plain LiveView, a test) the adopter builds one. The component never knows which ([macaw_compose 05 §7](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/05-components.md#components-libraries)).
-- **`now` is never a clock read** by the component: a Macaw surface supplies its own clock, which tests and replays control. A standalone holder may default its now to the wall clock, injectably ([macaw_data 01 §8.1](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event-rules)).
+- **The host computes it.** On a page, the core computes each instance's context; elsewhere (a visualize chart in a plain LiveView, a test) the adopter builds one. The component never knows which ([macaw_compose 05 §7](https://github.com/dcoai/macaw/blob/main/spec/05-components.md#components-libraries)).
+- **`now` is never a clock read** by the component: a Macaw surface supplies its own clock, which tests and replays control. A standalone holder may default its now to the wall clock, injectably ([macaw_data 01 §8.1](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event-rules)).
 - **`Context.heading(context, depth)`** is the heading element for a heading `depth` levels below the component's top (`0` for its top), `"h<level + depth>"`, never past `"h6"`, so a component never hard-codes a level.
 - **`Context.id(context, local)`** is an element id unique to the instance, `"<instance>-<local>"`, `local` a non-empty string of letters, digits, `-` and `_`; so two instances never share an id and an id is stable across renders (§5).
 
@@ -58,7 +58,7 @@ The modes and each mode's rules are `macaw_component`'s (macaw_compose#137): a c
 |---|---|---|
 | live | a connected LiveView | hooks attached; a visual may draw marks on a canvas |
 | socketless | bots, black holes, no JS, the first render | complete HTML and SVG, never canvas; native behaviors only; the first render from the deliveries |
-| neutral | base renders for records, before any delivery ([macaw_compose 08](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/08-records.md#records-content)); print | as socketless, with no hooks, scripts, tokens, live regions or per-viewer markup |
+| neutral | base renders for records, before any delivery ([macaw_compose 08](https://github.com/dcoai/macaw/blob/main/spec/08-records.md#records-content)); print | as socketless, with no hooks, scripts, tokens, live regions or per-viewer markup |
 | print | print and PDF output | as neutral, in the print theme and the automatic print layer, laid out in the print box |
 
 `Macaw.Component.Mode.all/0` is the four in this order. `allows?(mode, feature)` answers whether a mode allows a feature, from this table:
@@ -68,7 +68,7 @@ The modes and each mode's rules are `macaw_component`'s (macaw_compose#137): a c
 | `:canvas` | yes | no | no | no |
 | `:hooks` (`phx-hook`) | yes | yes | no | no |
 | `:scripts` (a static `<script src>` from `'self'`) | yes | yes | no | no |
-| `:tokens` (drawn tokens, [macaw_data 01 §8.1](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-event-rules); CSRF tokens) | yes | yes | no | no |
+| `:tokens` (drawn tokens, [macaw_data 01 §8.1](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event-rules); CSRF tokens) | yes | yes | no | no |
 | `:live_regions` | yes | yes | no | no |
 | `:per_viewer` (markup that differs by viewer) | yes | yes | no | no |
 
@@ -83,7 +83,7 @@ all/0 is the four modes in order and allows?/2 answers the table for every mode 
 Each kind (01 §2) carries rules its output is checked against by the kit (04 §2):
 - **`:navigation`** renders a `<nav>` named by `aria-label` or `aria-labelledby`, whose links are `<a href>`. A menu is a **disclosure navigation**: buttons with `aria-expanded` and `aria-controls`, nested lists, `aria-current="page"`; never `role="menu"`.
 - **`:control`** renders real form controls (`<button>`, `<input>`, `<select>`, `<textarea>`), each named.
-- **`:container`** renders an accessible pattern, one of: a tab list (`role="tablist"` of `role="tab"` elements with `aria-controls` naming `role="tabpanel"` elements); a disclosure (`<details>` with a `<summary>`, or a button with `aria-expanded` and `aria-controls`); a dialog (`<dialog>`, or `role="dialog"` with `aria-modal` and a name). Its panes are the markup its host hands it in `@settings["panes"]`, each a safe value; making them surfaces, rendering them lazily and computing what depends on them are the core's ([macaw_compose 05 §5](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/05-components.md#components-containers)).
+- **`:container`** renders an accessible pattern, one of: a tab list (`role="tablist"` of `role="tab"` elements with `aria-controls` naming `role="tabpanel"` elements); a disclosure (`<details>` with a `<summary>`, or a button with `aria-expanded` and `aria-controls`); a dialog (`<dialog>`, or `role="dialog"` with `aria-modal` and a name). Its panes are the markup its host hands it in `@settings["panes"]`, each a safe value; making them surfaces, rendering them lazily and computing what depends on them are the core's ([macaw_compose 05 §5](https://github.com/dcoai/macaw/blob/main/spec/05-components.md#components-containers)).
 - **`:content`** carries the rules every component does (§5) and no rule of its own.
 
 ```test:kind-rules
@@ -93,15 +93,15 @@ each kind's rules are checked on its output: a labeled nav of links, named real 
 ## 5. Rendering rules {#components-rendering}
 
 - **Server first, complete without a socket.** Native HTML wherever it gives behavior: `<details>`, `popover`, `<dialog>`. (dcotek_web.md C3.)
-- **Size by container queries, never by viewport,** so one component works in any region ([macaw_compose 10](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-responsive)). A component that lays out on the server (a chart computing scales and ticks) reads the **size and root font size** in its context. Until the first measurement, it lays out at the size its placement declares.
-- **Colors by the theme's rules** ([macaw_layers 04](https://gitlab.conet.yarina.org/dco-tek/macaw_layers/-/blob/main/spec/04-themes.md#themes-rules)): drawing colors from roles, as `var(--mw-…)` properties or the theme's classes; **data colors** as typed content **with a cue**: an element carrying a literal color says which non-color cue it carries, `data-mw-cue` one of `glyph`, `dash`, `pattern`, `label` or `position`, so color is never the only signal. Literal colors are refused otherwise, under the `:roles` profile every Macaw page validates against.
-- **Headings at the level given by context,** through `Context.heading/2`, never hard-coded ([macaw_compose 10 §4](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-a11y)).
+- **Size by container queries, never by viewport,** so one component works in any region ([macaw_compose 10](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-responsive)). A component that lays out on the server (a chart computing scales and ticks) reads the **size and root font size** in its context. Until the first measurement, it lays out at the size its placement declares.
+- **Colors by the theme's rules** ([macaw_layers 04](https://github.com/dcoai/macaw_layers/blob/main/spec/04-themes.md#themes-rules)): drawing colors from roles, as `var(--mw-…)` properties or the theme's classes; **data colors** as typed content **with a cue**: an element carrying a literal color says which non-color cue it carries, `data-mw-cue` one of `glyph`, `dash`, `pattern`, `label` or `position`, so color is never the only signal. Literal colors are refused otherwise, under the `:roles` profile every Macaw page validates against.
+- **Headings at the level given by context,** through `Context.heading/2`, never hard-coded ([macaw_compose 10 §4](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)).
 - **Names and states.** Every control and image is named; states are exposed (`aria-pressed`, `aria-expanded`, `aria-current`, `aria-busy`) with their legal values; every `aria-labelledby`, `aria-describedby` and `aria-controls` names an element of the render.
 - **Keyboard.** No positive `tabindex`. **A composite widget is one tab stop** with arrows inside (charts, grids, trees, tab sets, list boxes, toolbars). Key handling is focus-scoped unless declared as a page shortcut (01 §1.6).
 - **Element ids** come from `Context.id/2`: unique within the render, the same for the same assigns, derived from content structure (a section's position, an item's declared identity), never from a counter or a clock, so attention aggregates across builds (dcotek_web.md C3).
-- **Links and navigation as events or host link helpers.** A component never navigates by itself; its placement maps events to actions ([macaw_compose 06](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/06-pages.md#pages-actions)).
+- **Links and navigation as events or host link helpers.** A component never navigates by itself; its placement maps events to actions ([macaw_compose 06](https://github.com/dcoai/macaw/blob/main/spec/06-pages.md#pages-actions)).
 - **Announcements are requested, never owned.** A component never renders a live region (01 §1.6).
-- **Styles and loads by the delivery rule** ([macaw_compose 10 §1](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-csp)): no `style` attribute, no `<style>` element, no inline script, no `on…` attribute, no `javascript:` URL, and nothing loaded from another origin (every `src`, `srcset`, `poster`, `action` and SVG `href` same-origin; a link's `href` may go anywhere, since following it is navigation, not a load). A component's part is to declare what the rule needs (01 §1.8) and to give every first render a static form.
+- **Styles and loads by the delivery rule** ([macaw_compose 10 §1](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-csp)): no `style` attribute, no `<style>` element, no inline script, no `on…` attribute, no `javascript:` URL, and nothing loaded from another origin (every `src`, `srcset`, `poster`, `action` and SVG `href` same-origin; a link's `href` may go anywhere, since following it is navigation, not a load). A component's part is to declare what the rule needs (01 §1.8) and to give every first render a static form.
 - **Each mode's rules** are §3's: canvas only in live mode, complete SVG and HTML otherwise, no hooks, scripts, tokens or live regions in neutral and print.
 - **The budget holds in every mode** (macaw_compose#29). Each slot's budget (01 §1.4) is evaluated at **that mode's size**, never the viewer's window: socketless, neutral and the first live render at the size the placement declares, since no measurement exists yet; live, after the first measurement, at the measured container; print at the print box. The host ceiling applies in every mode, and no mode hands a component unbudgeted rows.
 - **Every drawn state has a static render** (§6), so neutral and print show it without hooks.
@@ -118,7 +118,7 @@ the kit finds each rule broken by a render that breaks it, and nothing in a rend
 
 `Macaw.Component.Drawn`:
 - `all/0` is the eight in precedence order. `pick(states)` is the one of highest precedence among a list, `:live` for `[]`: a host with a slot loading and another stale shows `loading`, and a component that draws fewer rows than it was handed picks `capped` over its assigned `live`.
-- `role/1` is the state's theme role ([macaw_layers 04](https://gitlab.conet.yarina.org/dco-tek/macaw_layers/-/blob/main/spec/04-themes.md)): `crashed` and `down` `:bad`, `invalid` and `stale` `:warning`, `loading` and `capped` `:info`, `no_data` `:neutral`, and `live` `nil`. `glyph/1` is that role's cue glyph (`Macaw.Layers.Theme.cue/1`), `nil` for `live`.
+- `role/1` is the state's theme role ([macaw_layers 04](https://github.com/dcoai/macaw_layers/blob/main/spec/04-themes.md)): `crashed` and `down` `:bad`, `invalid` and `stale` `:warning`, `loading` and `capped` `:info`, `no_data` `:neutral`, and `live` `nil`. `glyph/1` is that role's cue glyph (`Macaw.Layers.Theme.cue/1`), `nil` for `live`.
 - `words/1` is the state's words: "Couldn't be drawn", "Source unavailable", "Invalid settings", "Loading", "No data", "Out of date", "Showing part of the data", and `nil` for `live`.
 - `render(state, context)` is a static notice for a state other than `live`, which a component may draw as its own: `<p class="mw-drawn mw-drawn-<state>" data-mw-drawn="<state>">`, a glyph element with the role's class and `aria-hidden="true"`, then the words. It is not a live region, so it holds in every mode. `render(:live, context)` is empty.
 
@@ -150,7 +150,7 @@ a contained component's value moves through init, delivery, size and bound, and 
 
 ## 8. The client protocols {#components-client}
 
-Two things on the client are **found, not created per component**, so a component behaves the same on a Macaw page and off one, and two standalone components, or one beside a Macaw surface, share them ([macaw_compose 10 §4, §6](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-a11y)). Their fixed names are `Macaw.Component.Client`'s:
+Two things on the client are **found, not created per component**, so a component behaves the same on a Macaw page and off one, and two standalone components, or one beside a Macaw surface, share them ([macaw_compose 10 §4, §6](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)). Their fixed names are `Macaw.Component.Client`'s:
 - **the announcer:** `announcer_ids/0` is `%{polite: "mw-announcer-polite", assertive: "mw-announcer-assertive"}`. The first hook to mount on a page without them creates the two regions at the end of the body; every later one reuses them. A hook requests an announcement by dispatching `announce_event/0`, `"macaw:announce"`, on its element with detail `{name, text, politeness}`; a server request is an event carrying 01 §1.6's request;
 - **the client bus:** `bus_name/0` is `"MacawBus"`, the property of `window` it lives under. A hook publishes and subscribes only to the `local` keys its component declares, domain values only, never pixels; nothing on it reaches the server.
 
