@@ -2,7 +2,7 @@ defmodule Macaw.Component.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/dcoai/macaw_component"
-  @version "0.1.0"
+  @version "0.1.1"
 
   def project do
     [
@@ -26,7 +26,7 @@ defmodule Macaw.Component.MixProject do
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
-  # Published on Hex from its public home, mirrored from GitLab (dco-tek/macaw_compose#155).
+  # Published on Hex from its public home, mirrored from GitLab (dco-tek/macaw/macaw#155).
   defp package do
     [
       licenses: ["MIT"],
@@ -41,9 +41,11 @@ defmodule Macaw.Component.MixProject do
   defp deps do
     [
       # Themes, their roles and cues (spec/00 §2).
-      {:macaw_layers, git: "git@gitlab.conet.yarina.org:dco-tek/macaw_layers.git", tag: "v0.2.0"},
+      {:macaw_layers,
+       git: "git@gitlab.conet.yarina.org:dco-tek/macaw/macaw_layers.git", tag: "v0.2.0"},
       # Parameters, schemas, deliveries and the interaction event (spec/00 §2).
-      {:macaw_data, git: "git@gitlab.conet.yarina.org:dco-tek/macaw_data.git", tag: "v0.5.1"},
+      {:macaw_data,
+       git: "git@gitlab.conet.yarina.org:dco-tek/macaw/macaw_data.git", tag: "v0.5.2"},
       # The safe-markup protocol a render answers in (spec/00 §2); not Phoenix, not LiveView.
       {:phoenix_html, "~> 4.1"},
       # The conformance kit reads renders with it, and compiles only when it is present.
