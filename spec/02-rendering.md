@@ -80,21 +80,17 @@ all/0 is the four modes in order and allows?/2 answers the table for every mode 
 
 ## 4. Kinds' output rules {#components-kind-rules}
 
-<!-- surfex: deferred #149: the conformance kit -->
-
 Each kind (01 §2) carries rules its output is checked against by the kit (04 §2):
 - **`:navigation`** renders a `<nav>` named by `aria-label` or `aria-labelledby`, whose links are `<a href>`. A menu is a **disclosure navigation**: buttons with `aria-expanded` and `aria-controls`, nested lists, `aria-current="page"`; never `role="menu"`.
 - **`:control`** renders real form controls (`<button>`, `<input>`, `<select>`, `<textarea>`), each named.
 - **`:container`** renders an accessible pattern, one of: a tab list (`role="tablist"` of `role="tab"` elements with `aria-controls` naming `role="tabpanel"` elements); a disclosure (`<details>` with a `<summary>`, or a button with `aria-expanded` and `aria-controls`); a dialog (`<dialog>`, or `role="dialog"` with `aria-modal` and a name). Its panes are the markup its host hands it in `@settings["panes"]`, each a safe value; making them surfaces, rendering them lazily and computing what depends on them are the core's ([macaw_compose 05 §5](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/05-components.md#components-containers)).
 - **`:content`** carries the rules every component does (§5) and no rule of its own.
 
-```planned-test:kind-rules
+```test:kind-rules
 each kind's rules are checked on its output: a labeled nav of links, named real controls, one of the container patterns, and role=menu refused
 ```
 
 ## 5. Rendering rules {#components-rendering}
-
-<!-- surfex: deferred #149: the conformance kit -->
 
 - **Server first, complete without a socket.** Native HTML wherever it gives behavior: `<details>`, `popover`, `<dialog>`. (dcotek_web.md C3.)
 - **Size by container queries, never by viewport,** so one component works in any region ([macaw_compose 10](https://gitlab.conet.yarina.org/dco-tek/macaw_compose/-/blob/main/spec/10-web.md#web-responsive)). A component that lays out on the server (a chart computing scales and ticks) reads the **size and root font size** in its context. Until the first measurement, it lays out at the size its placement declares.
@@ -112,7 +108,7 @@ each kind's rules are checked on its output: a labeled nav of links, named real 
 
 These are checked by the kit (04 §2), each rule a check.
 
-```planned-test:rendering-rules-checked
+```test:rendering-rules-checked
 the kit finds each rule broken by a render that breaks it, and nothing in a render that keeps them all
 ```
 

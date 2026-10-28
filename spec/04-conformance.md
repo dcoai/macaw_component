@@ -1,15 +1,11 @@
 # 04 — The conformance kit {#conformance}
 
-<!-- surfex: deferred #149: the conformance kit -->
-
 ## 1. One kit, two layers {#components-kit}
-
-<!-- surfex: deferred #149: the conformance kit -->
 
 Every component runs **one kit**, `Macaw.Component.Conformance`: the contract of [01](01-contract.md) and the rules of [02](02-rendering.md) as checks, so a component author proves conformance by running it rather than by reading this spec. There is **one kit per contract** (the source kit in `macaw_data`, this one for components, the template and layer checks in `macaw`); adopters add checks as **check sets** (§4), never a kit of their own (macaw_compose#22, R19). It is shipped in `lib/`, so any component author runs it, the way `macaw_data`'s source kit works.
 
 **Two layers**, as in the source kit ([macaw_data 01 §9](https://gitlab.conet.yarina.org/dco-tek/macaw_data/-/blob/main/spec/01-sources.md#sources-conformance)):
-- `check(check, component, opts)` answers one check's **findings**, `{check, reason}` terms, `[]` for a component that passes; `check(component, opts)` runs every check of `checks/0`, then those of each check set in `check_sets:`; `format/1` words a finding as a line a person reads.
+- `check(check, component, opts)` answers one check's **findings**, `{check, {where, what}}` terms, `[]` for a component that passes: `where` is the fixture's name and the kind and mode the render was made in (`nil` where none applies), and `what` the rule broken; `check(component, opts)` runs every check of `checks/0`, then those of each check set in `check_sets:`; `format/1` words a finding as a line a person reads.
 - `use Macaw.Component.Conformance, component: …` inside a module that uses `ExUnit.Case` writes one test per check, in a `describe` block, failing with the findings. The kit references no ExUnit function itself (`describe`, `test` and `flunk` appear only in the code `use` writes), so it loads in production.
 - `use` refuses a missing `component:` and an unknown option at compile time; `check/3` refuses an unknown check and an unknown option with `ArgumentError`.
 
@@ -22,17 +18,15 @@ Every component runs **one kit**, `Macaw.Component.Conformance`: the contract of
 
 **How a check renders.** For each fixture, each kind and each mode, the kit builds a context (instance `"kit-a"`, heading level 2, the options' theme, size and now), validated settings, declarations and assigns (02 §1): a `:pure` component gets the fixture's deliveries; a `:contained` one gets the value of `init/2`, then `delivery/3` for each delivered slot, then `size/2`. It renders with `drawn: :live` (`:loading` when a slot the component declares has no delivery), and reads the result through `Phoenix.HTML.Safe.to_iodata/1`.
 
-```planned-test:kit-layers
+```test:kit-layers
 an honest component passes every check; check/3 answers one check's findings and check/2 all of them; every finding formats as a line
 ```
 
-```planned-test:kit-use
+```test:kit-use
 use writes one test per check into a describe block, refuses a missing component and an unknown option at compile time, and an unknown check or option is refused
 ```
 
 ## 2. The checks {#components-kit-checks}
-
-<!-- surfex: deferred #149: the conformance kit -->
 
 `checks/0` is these twelve, in order:
 
@@ -51,21 +45,19 @@ use writes one test per check into a describe block, refuses a missing component
 | `:budget` | `budget/4` answers `{:ok, _}` for each slot of each fixture at `{320, 200}`, `{640, 400}` and `{1280, 800}` |
 | `:contained` | for a `:contained` component: `init`, `delivery` for each delivered slot, `size`, and `bound` for each bindable parameter at its default, each answering a value that renders; equal inputs give equal values. A `:pure` component passes with no finding |
 
-**Findings name what failed** (`{:kinds, {kind, :unnamed_nav}}`, `{:delivery, {:style_attribute, element}}`, `{:ids, {:unstable, id}}`), the element as its tag and its id or position, so a finding reads without the render at hand.
+**Findings name where and what failed** (`{:kinds, {{"fixture 1", :navigation, :live}, {:unnamed_nav, "nav(0)"}}}`, `{:delivery, {where, {:style_attribute, "p#kit-a-x"}}}`, `{:ids, {where, {:unstable, id}}}`), an element as its tag and its id or document position, so a finding reads without the render at hand. `format/1` words one as `check (fixture, kind, mode): what`.
 
 **Isolation.** A check runs a component's callbacks in the caller's process: a raise is the test's failure, with its stacktrace, which is what a component author needs. A host isolates components by process; the kit does not.
 
-```planned-test:kit-checks
+```test:kit-checks
 every check is failed by a component built to break it, with the finding that names the rule, and every check is passed by the honest components
 ```
 
-```planned-test:kit-drawn-budget-contained
+```test:kit-drawn-budget-contained
 every drawn state is checked in every mode, a blank one is a finding; a bad budget is a finding per slot and size; a contained component's transitions are checked and must be pure
 ```
 
 ## 3. Fixtures {#components-kit-fixtures}
-
-<!-- surfex: deferred #149: the conformance kit -->
 
 A component whose declarations depend on its settings ships **a fixture set**, one fixture for each distinct declaration shape (for visualize: one per mark, frame kind, backend and scene), and the kit runs over every one. A fixture is a map:
 - `name`: how a finding names it, `"fixture <index>"` by default;
@@ -75,7 +67,7 @@ A component whose declarations depend on its settings ships **a fixture set**, o
 
 An unknown key is refused with `ArgumentError`.
 
-```planned-test:kit-fixtures
+```test:kit-fixtures
 the kit runs every fixture and names a finding by its fixture; defaults fill a bare fixture, and an unknown key is refused
 ```
 
@@ -83,7 +75,7 @@ the kit runs every fixture and names a finding by its fixture; defaults fill a b
 
 <!-- surfex: deferred #150: the visual check set -->
 
-A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order. A set's checks run after the twelve, for each fixture, and their findings are `{check, reason}` like any other.
+A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after the twelve, for each fixture, and their findings are shaped like any other's.
 
 **The visual check set**, `:visual`, for components that draw data (visualize's visuals):
 
