@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The macaw logo in the docs and the README (macaw#175).
+
 ## v0.1.2 (2026-10-28)
 
 - On Hex: depends on `macaw_layers ~> 0.2.2` and `macaw_data ~> 0.5.3` from Hex instead of their git tags; the README installs from Hex (macaw#155).
