@@ -40,7 +40,7 @@ defmodule Macaw.Component.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "https://hexdocs.pm/macaw_component/changelog.html"
       },
-      files: ~w(lib spec mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+      files: ~w(lib priv spec mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
   end
 

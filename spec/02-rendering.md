@@ -1,6 +1,6 @@
 # 02 — Rendering {#rendering}
 
-How a component renders: with what (§1, §2), in which modes (§3), to which rules (§4, §5), in which drawn state (§6), and, for a `:contained` component, from what value (§7). The client-side protocols every adopter shares are §8.
+How a component renders: with what (§1, §2), in which modes (§3), to which rules (§4, §5), in which drawn state (§6), and, for a `:contained` component, from what value (§7). The client-side protocols every adopter shares, and the module that implements them for hooks, are §8.
 
 ## 1. The assigns {#components-assigns}
 
@@ -151,11 +151,56 @@ a contained component's value moves through init, delivery, size and bound, and 
 ## 8. The client protocols {#components-client}
 
 Two things on the client are **found, not created per component**, so a component behaves the same on a Macaw page and off one, and two standalone components, or one beside a Macaw surface, share them ([macaw_compose 10 §4, §6](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)). Their fixed names are `Macaw.Component.Client`'s:
-- **the announcer:** `announcer_ids/0` is `%{polite: "mw-announcer-polite", assertive: "mw-announcer-assertive"}`. The first hook to mount on a page without them creates the two regions at the end of the body; every later one reuses them. A hook requests an announcement by dispatching `announce_event/0`, `"macaw:announce"`, on its element with detail `{name, text, politeness}`; a server request is an event carrying 01 §1.6's request;
+- **the announcer:** `announcer_ids/0` is `%{polite: "mw-announcer-polite", assertive: "mw-announcer-assertive"}`. The first hook to mount on a page without them creates the two regions at the end of the body; every later one reuses them. A hook requests an announcement by dispatching `announce_event/0`, `"macaw:announce"`, on its element, bubbling, with detail `{name, text, politeness}`; a server request is an event carrying 01 §1.6's request;
 - **the client bus:** `bus_name/0` is `"MacawBus"`, the property of `window` it lives under. A hook publishes and subscribes only to the `local` keys its component declares, domain values only, never pixels; nothing on it reaches the server.
-
-A shared static module implementing both for hooks is its own proposal (macaw_compose#142).
 
 ```test:client-names
 the announcer's ids, the announce event's name and the bus's name are the fixed values every adopter uses
 ```
+
+### 8.1 What a component declares, on the client {#components-client-attributes}
+
+The client learns a component's names **from its declarations, rendered**, never from a list of its own (macaw#142). `Client.attributes(declarations)` is two data attributes, each a JSON list of strings:
+- **`data-mw-announces`** (`announces_attribute/0`): the `announces` names, in declared order;
+- **`data-mw-local`** (`local_attribute/0`): the `local` keys, sorted.
+
+Both are always present, `[]` when nothing is declared, so a component that declares nothing has nothing accepted. A component puts them on the element its hook is attached to, or on an ancestor of it within the component: `<div phx-hook="Cards" {Client.attributes(@declarations)}>`. The client reads them from the **nearest** element carrying them, the hook's element or an ancestor, at each request, so declarations that follow settings are read as rendered. JSON is this attribute's encoding at the edge; the declarations themselves are terms (macaw#188).
+
+```test:client-attributes
+the two attributes are rendered from the declarations: exactly the declared announcement names and local keys, escaped and read back, and empty lists when nothing is declared
+```
+
+### 8.2 The shared client module {#components-client-module}
+
+The package ships **one ES module implementing both for hooks**, `Client.module_path/0`, `priv/static/macaw_component/client.js`: no build step, no import of anything, no third-party code (macaw#142). `priv` is among the package's files.
+- **Served** from `'self'` by the host, as the rest of `priv/static`:
+
+  ```elixir
+  plug Plug.Static, at: "/", from: {:macaw_component, "priv/static"}, only: ~w(macaw_component)
+  ```
+
+- **Imported** by a hook from `Client.module_url/0`, `"/macaw_component/client.js"`: `import { announce, bus } from "/macaw_component/client.js"` (01 §1.8). A page holds one instance of it however many hooks import it.
+
+**Its exports:**
+- **`findAnnouncer()`** answers `{polite, assertive}`, the two regions, found by their ids. On a page without them, the first call creates them at the end of the body (`aria-live` of their politeness, `aria-atomic="true"`, visually hidden through the CSSOM, never a `style` attribute, §5) and becomes **their announcer**: it alone listens for the announce event. Where the regions were found, their creator announces (`macaw_live`, or the hook that made them), so a page has one queue.
+- **`announce(el, {name, text, politeness})`** finds the announcer and dispatches the announce event on `el`, bubbling. The announcer:
+  - **drops** a request whose `name` the component doesn't declare in `announces` (by §8.1's attribute nearest the event's target), whose `text` is empty, or whose `politeness` is neither `"polite"` nor `"assertive"`, `"polite"` when absent; as `Announcement.new/2` refuses on the server (01 §1.6);
+  - **queues** each politeness's requests on its own region, and **merges** a request whose name is already waiting: the newer text replaces the older, in the older's place;
+  - **rate-limits** each region to one announcement per `names.intervalMs`, 500 ms: an idle region is written at once, and the next waits out the interval. The same words twice in a row are written with a trailing no-break space, so a screen reader reads the repeat.
+- **`bus()`** answers `window.MacawBus`, created by the first call on a page without one (`macaw_live` provides it when present). It is two functions, the protocol any bus under that name keeps:
+  - **`publish(el, key, value)`** hands `value`, as given, to every subscriber of `key`, the publisher's own included, as `callback(value, el)`, so a hook skips its own echo by the source;
+  - **`subscribe(el, key, callback)`** answers the function that unsubscribes;
+  - each **refuses** a key `el`'s component doesn't declare in `local` (§8.1) by throwing an `Error` naming it, and nothing is delivered then: an undeclared key is the hook's bug, surfaced where it is made.
+- **`names`**, the fixed names above, frozen, the ones `Macaw.Component.Client` answers.
+
+**Values pass through uninspected** (macaw#188). The bus checks keys, never values: a `local` key's type is its domain type (01 §1.5), and how a value of a local type is written on the client (a time as epoch milliseconds, a window as a pair) is **that component's adapter**, agreed between the components sharing the key's name. The bus neither encodes nor validates it.
+
+```test:client-module
+the module is at its path in the package's priv/static, served at its url, holds each fixed name, imports nothing, and refuses undeclared names and keys
+```
+
+```test:client-package
+the package's files include priv, so the module ships on Hex
+```
+
+**Gap:** the module's behavior in a browser (finding and creating the regions, queuing, merging, rate-limiting, dropping, the bus's delivery and refusals) is **untested** until the example app's keyboard and axe-core CI exists ([macaw_compose 10 §4](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)). The tests here read the module as text: its place, its names and the presence of its refusals.

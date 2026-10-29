@@ -11,6 +11,7 @@ defmodule Macaw.Component.RenderingTest do
   doctest Context
   doctest Mode
   doctest Drawn
+  doctest Client
 
   @now ~U[2026-10-28 12:00:00Z]
 
@@ -228,5 +229,75 @@ defmodule Macaw.Component.RenderingTest do
 
     assert Client.announce_event() == "macaw:announce"
     assert Client.bus_name() == "MacawBus"
+  end
+
+  @tag verifies: "client-attributes"
+  test "the client attributes are rendered from the declarations, and only from them" do
+    {:ok, d} =
+      Declarations.new(
+        [
+          announces: ["matches", ~s(say "hi" <b>)],
+          local: %{"hover" => :time, "brush_band" => :window},
+          events: ["open"],
+          writes: %{"selection" => :identity}
+        ],
+        nil
+      )
+
+    html =
+      IO.iodata_to_binary([
+        ~s(<div phx-hook="Cards"),
+        Phoenix.HTML.attributes_escape(Client.attributes(d)) |> Phoenix.HTML.safe_to_string(),
+        "></div>"
+      ])
+
+    [element] = html |> LazyHTML.from_fragment() |> LazyHTML.query("div") |> Enum.to_list()
+    read = &(element |> LazyHTML.attribute(&1) |> hd() |> JSON.decode!())
+
+    # Exactly the declared names: an event or a written state source is not among them.
+    assert read.(Client.announces_attribute()) == ["matches", ~s(say "hi" <b>)]
+    assert read.(Client.local_attribute()) == ["brush_band", "hover"]
+
+    # A component that declares nothing hands the client empty lists, not missing ones.
+    {:ok, none} = Declarations.new([], nil)
+    assert Client.attributes(none) == [{"data-mw-announces", "[]"}, {"data-mw-local", "[]"}]
+
+    # From a component's own declarations.
+    {:ok, cards} = Component.declarations(Cards, %{})
+
+    assert Client.attributes(cards) == [
+             {"data-mw-announces", ~s(["opened"])},
+             {"data-mw-local", "[]"}
+           ]
+  end
+
+  @tag verifies: "client-module"
+  test "the shared module is at its path and holds the protocols' names" do
+    path = Application.app_dir(:macaw_component, Client.module_path())
+    assert File.regular?(path)
+    assert Client.module_path() == "priv/static" <> Client.module_url()
+    text = File.read!(path)
+
+    names =
+      Map.values(Client.announcer_ids()) ++
+        [
+          Client.announce_event(),
+          Client.bus_name(),
+          Client.announces_attribute(),
+          Client.local_attribute()
+        ]
+
+    for name <- names, do: assert(text =~ "'#{name}'", "#{name} is not in the module")
+
+    # No import of anything else, and the refusals of undeclared names.
+    refute text =~ ~r/^\s*import\s/m
+    assert text =~ "declared(el, ANNOUNCES_ATTRIBUTE).includes(detail.name)"
+    assert text =~ "is not declared in local by this component"
+  end
+
+  @tag verifies: "client-package"
+  test "the package ships priv/static" do
+    files = Mix.Project.config()[:package][:files]
+    assert "priv" in files or "priv/static" in files
   end
 end

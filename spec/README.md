@@ -8,7 +8,7 @@ Each Macaw library has its own spec in its own repository (dco-tek/macaw_compose
 |---|---|---|
 | [00 — Overview](00-overview.md) | what `macaw_component` holds, what it depends on, the order it is built in, stability | |
 | [01 — The contract](01-contract.md) | the behavior, names and kinds, parameters, declarations: slots, budget, state, events, announcements, observation, shortcuts, reading load, assets, hooks, proxy routes, isolation, access | implemented (v0.1.0, order-of-work step 8.1) |
-| [02 — Rendering](02-rendering.md) | the assigns, the context, the rendering modes, kinds' output rules, the rendering rules, drawn states, the contained value | implemented (v0.1.0) |
+| [02 — Rendering](02-rendering.md) | the assigns, the context, the rendering modes, kinds' output rules, the rendering rules, drawn states, the contained value, the client protocols and the shared client module | implemented (v0.1.0) |
 | [03 — Packages](03-packages.md) | the package side of the registry: members, introspection, names | implemented (v0.1.0) |
 | [04 — The conformance kit](04-conformance.md) | the component kit, its checks, fixtures and check sets, the visual check set | implemented (v0.1.0) |
 
