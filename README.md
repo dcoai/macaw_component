@@ -37,7 +37,7 @@ end
 From Hex:
 
 ```elixir
-{:macaw_component, "~> 0.1.3"}
+{:macaw_component, "~> 0.1.4"}
 ```
 
 The specification is in [`spec/`](https://github.com/dcoai/macaw_component/blob/main/spec/README.md).

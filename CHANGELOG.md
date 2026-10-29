@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.4 (2026-10-29)
+
+- `macaw_data ~> 0.6.0`: a delivery keeps the rows its source gave (dco-tek/macaw/macaw#185, #186).
+
 ## v0.1.3 (2026-10-28)
 
 - The macaw logo in the docs and the README (macaw#175).

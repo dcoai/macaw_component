@@ -2,7 +2,7 @@ defmodule Macaw.Component.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/dcoai/macaw_component"
-  @version "0.1.3"
+  @version "0.1.4"
 
   def project do
     [
@@ -49,7 +49,7 @@ defmodule Macaw.Component.MixProject do
       # Themes, their roles and cues (spec/00 §2).
       {:macaw_layers, "~> 0.2.2"},
       # Parameters, schemas, deliveries and the interaction event (spec/00 §2).
-      {:macaw_data, "~> 0.5.3"},
+      {:macaw_data, "~> 0.6.0"},
       # The safe-markup protocol a render answers in (spec/00 §2); not Phoenix, not LiveView.
       {:phoenix_html, "~> 4.1"},
       # The conformance kit reads renders with it, and compiles only when it is present.
