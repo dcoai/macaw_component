@@ -1,13 +1,14 @@
 if Code.ensure_loaded?(LazyHTML) do
   defmodule Macaw.Component.Conformance.Checks do
     @moduledoc false
-    # The twelve checks of spec/04 §2, each answering findings `{check, {where, what}}`:
+    # The thirteen checks of spec/04 §2, each answering findings `{check, {where, what}}`:
     # `where` the fixture's name, and the kind and mode a render was made in, and `what`
     # the rule broken.
 
     alias Macaw.Component
-    alias Macaw.Component.{Drawn, Mode}
+    alias Macaw.Component.{Context, Drawn, Mode}
     alias Macaw.Component.Conformance.{Html, Render}
+    alias Macaw.Data.{Delivery, Table}
 
     @composite_roles ~w(grid tree tablist listbox radiogroup toolbar)
     @color_attrs ~w(fill stroke color stop-color flood-color lighting-color)
@@ -115,7 +116,7 @@ if Code.ensure_loaded?(LazyHTML) do
           state <- Drawn.all(),
           kind <- info.kinds,
           mode <- Mode.all() do
-        context = Render.context(opts, mode: mode)
+        context = Render.context(opts, fixture, mode: mode)
         assigns = Render.assigns(module, fixture, settings, declarations, context, state)
         tree = Render.render(module, kind, assigns)
         {{fixture.name, kind, mode}, tree, state}
@@ -142,6 +143,24 @@ if Code.ensure_loaded?(LazyHTML) do
           ],
           reason <- contained(module, info, fixture, settings, declarations, opts),
           do: {{fixture.name, nil, nil}, reason}
+    end
+
+    # :bindings — a fixture's bound fields renamed render the same, once names are restored.
+    defp what(:bindings, module, opts) do
+      {:ok, info} = Component.info(module)
+
+      for fixture <- Keyword.fetch!(opts, :fixtures),
+          fixture.bindings != %{},
+          {:ok, settings, declarations} <- [Render.setup(module, fixture)],
+          # Bindings the context refuses raise here, before they are read.
+          %Context{} <- [Render.context(opts, fixture)],
+          tokens = binding_tokens(fixture.bindings),
+          {slot, roles} <- Enum.sort(fixture.bindings),
+          renamed = renamed(fixture, slot, roles, tokens),
+          kind <- info.kinds,
+          given = live(module, kind, fixture, settings, declarations, opts, %{}),
+          given != live(module, kind, renamed, settings, declarations, opts, tokens),
+          do: {{fixture.name, kind, :live}, {:ignores_binding, slot}}
     end
 
     # -- declarations ---------------------------------------------------------------------
@@ -485,11 +504,119 @@ if Code.ensure_loaded?(LazyHTML) do
         Enum.any?(all, &(Html.attr(&1, "role") == "img" and Html.named?(&1, all)))
     end
 
+    # -- bindings -------------------------------------------------------------------------
+
+    # A fresh token for each field the fixture binds, in field order.
+    defp binding_tokens(bindings) do
+      bindings
+      |> Map.values()
+      |> Enum.flat_map(&Map.values/1)
+      |> List.flatten()
+      |> Enum.uniq()
+      |> Enum.sort()
+      |> Enum.with_index()
+      |> Map.new(fn {field, i} -> {field, "mwbound#{i}"} end)
+    end
+
+    # The fixture with the fields bound in `slot` renamed to their tokens, in its delivery
+    # and in its bindings.
+    defp renamed(fixture, slot, roles, tokens) do
+      fields = roles |> Map.values() |> List.flatten()
+      renames = Map.take(tokens, fields)
+
+      roles =
+        Map.new(roles, fn
+          {role, [_ | _] = fields} -> {role, Enum.map(fields, &Map.fetch!(renames, &1))}
+          {role, field} -> {role, Map.fetch!(renames, field)}
+        end)
+
+      deliveries =
+        Map.new(fixture.deliveries, fn
+          {^slot, delivery} -> {slot, rename(delivery, renames)}
+          other -> other
+        end)
+
+      %{fixture | deliveries: deliveries, bindings: Map.put(fixture.bindings, slot, roles)}
+    end
+
+    # A delivery with its fields renamed: tuple rows' names, else the rows' keys, and the
+    # types' keys. Rows that are a table or another struct are read as row maps; rows read
+    # by position only (a tensor or tuple rows, without names) have no names to rename.
+    defp rename(%Delivery{} = delivery, renames) do
+      {rows, names} =
+        case delivery.names do
+          nil -> {rename_rows(delivery.rows, renames), nil}
+          names -> {delivery.rows, Enum.map(names, &rename_key(&1, renames))}
+        end
+
+      Delivery.new(rows,
+        served: delivery.served,
+        origin: delivery.origin,
+        schema: delivery.schema,
+        names: names,
+        types: rename_keys(delivery.types, renames)
+      )
+    end
+
+    defp rename_rows(rows, renames) do
+      cond do
+        Table.unnamed?(rows) -> rows
+        is_struct(rows) -> rows |> Table.rows() |> rename_rows(renames)
+        is_list(rows) -> Enum.map(rows, &rename_row(&1, renames))
+        true -> rename_keys(rows, renames)
+      end
+    end
+
+    defp rename_row(%_{} = row, _renames), do: row
+    defp rename_row(%{} = row, renames), do: rename_keys(row, renames)
+
+    defp rename_row({name, column}, renames) when is_list(column),
+      do: {rename_key(name, renames), column}
+
+    defp rename_row(row, _renames), do: row
+
+    defp rename_keys(map, renames),
+      do: Map.new(map, fn {key, value} -> {rename_key(key, renames), value} end)
+
+    defp rename_key(key, renames) when is_atom(key) or is_binary(key),
+      do: Map.get(renames, to_string(key), key)
+
+    defp rename_key(key, _renames), do: key
+
+    # A live render's markup, its tokens mapped back to their fields, read as a tree. A
+    # drawn token follows the rows, so renaming changes it: its value is not compared.
+    defp live(module, kind, fixture, settings, declarations, opts, tokens) do
+      context = Render.context(opts, fixture)
+      assigns = Render.assigns(module, fixture, settings, declarations, context)
+      back = Map.new(tokens, fn {field, token} -> {token, field} end)
+
+      module
+      |> Render.markup(kind, assigns)
+      |> IO.iodata_to_binary()
+      |> restore(back)
+      |> Html.parse()
+      |> untokened()
+    end
+
+    defp restore(markup, back) when map_size(back) == 0, do: markup
+    defp restore(markup, back), do: String.replace(markup, Map.keys(back), &Map.fetch!(back, &1))
+
+    defp untokened(nodes) when is_list(nodes), do: Enum.map(nodes, &untokened/1)
+
+    defp untokened({tag, attrs, children}) when is_binary(tag) do
+      attrs =
+        for {name, value} <- attrs, do: {name, if(name == "data-mw-token", do: "", else: value)}
+
+      {tag, attrs, untokened(children)}
+    end
+
+    defp untokened(node), do: node
+
     # -- contained ------------------------------------------------------------------------
 
     defp contained(module, info, fixture, settings, declarations, opts) do
       {:ok, parameters} = Component.parameters(module)
-      context = Render.context(opts)
+      context = Render.context(opts, fixture)
 
       run = fn ->
         value = Render.value(module, fixture, settings, context)

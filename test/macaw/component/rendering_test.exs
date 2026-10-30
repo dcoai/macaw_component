@@ -79,7 +79,8 @@ defmodule Macaw.Component.RenderingTest do
                :heading_level,
                :theme,
                :preferences,
-               :now
+               :now,
+               :bindings
              ]
 
     assert {:error, faults} =
@@ -120,6 +121,69 @@ defmodule Macaw.Component.RenderingTest do
                now: @now,
                preferences: %{zone: "UTC", units: :imperial_ish, shortcuts: %{}}
              )
+  end
+
+  @tag verifies: "context-bindings"
+  test "a context carries the resolved bindings, %{} by default; a bad one is a fault at its path" do
+    assert context().bindings == %{}
+
+    bindings = %{"points" => %{"x" => "t", "y" => ["in", "out"]}, "labels" => %{}}
+    assert context(bindings: bindings).bindings == bindings
+
+    assert {:error, faults} =
+             Context.new(
+               mode: :live,
+               instance: "c1",
+               size: {1, 1},
+               now: @now,
+               bindings: %{
+                 "" => %{"x" => "t"},
+                 "a" => %{"x" => "", "y" => [], "z" => ["t", :u], :w => "t"},
+                 "b" => [x: "t"]
+               }
+             )
+
+    assert Enum.sort(faults) == [
+             {[:bindings, ""], :bad_name},
+             {[:bindings, "a", :w], :bad_name},
+             {[:bindings, "a", "x"], :not_a_field},
+             {[:bindings, "a", "y"], :not_a_field},
+             {[:bindings, "a", "z"], :not_a_field},
+             {[:bindings, "b"], :not_a_map}
+           ]
+
+    for bad <- [[], "points", %{"points" => nil}] do
+      assert {:error, [{[:bindings | _], _reason}]} =
+               Context.new(mode: :live, instance: "c1", size: {1, 1}, now: @now, bindings: bad)
+    end
+  end
+
+  @tag verifies: "context-bindings"
+  test "field/3 answers a role's field, a many role's fields, and nil for an absent slot or role" do
+    ctx = context(bindings: %{"points" => %{"x" => "t", "y" => ["in", "out"]}})
+    assert Context.field(ctx, "points", "x") == "t"
+    assert Context.field(ctx, "points", "y") == ["in", "out"]
+    assert Context.field(ctx, "points", "label") == nil
+    assert Context.field(ctx, "labels", "x") == nil
+    assert Context.field(context(), "points", "x") == nil
+
+    # The host computes the bindings with Slot.resolve/3: an unbound window role reads the
+    # window field, an unbound optional role is absent.
+    {:ok, slot} =
+      Macaw.Component.Slot.new(%{
+        requires: %{
+          "x" => %{type: :time, window: true},
+          "y" => %{type: :number, many: true},
+          "label" => %{type: :text, optional: true}
+        }
+      })
+
+    schema = Macaw.Data.Schema.new!(%{t: %{type: :time}, in: %{type: :number}})
+    resolved = Macaw.Component.Slot.resolve(slot, schema, %{"y" => [:in]})
+    ctx = context(bindings: %{"points" => resolved})
+    assert Context.field(ctx, "points", "x") == "t"
+    assert Context.field(ctx, "points", "y") == ["in"]
+    assert Context.field(ctx, "points", "label") == nil
   end
 
   @tag verifies: "context-helpers"

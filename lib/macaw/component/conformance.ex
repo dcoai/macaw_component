@@ -36,7 +36,8 @@ if Code.ensure_loaded?(LazyHTML) do
       :ids,
       :drawn,
       :budget,
-      :contained
+      :contained,
+      :bindings
     ]
 
     # Check sets by name, in order: `{set, checks}`.
@@ -46,7 +47,7 @@ if Code.ensure_loaded?(LazyHTML) do
     @typedoc "A finding: the check, then where (the fixture, kind and mode) and what failed."
     @type finding :: {atom(), {{String.t(), atom() | nil, atom() | nil}, term()}}
 
-    @doc "The twelve checks, in order."
+    @doc "The thirteen checks, in order."
     @spec checks() :: [atom(), ...]
     def checks, do: @checks
 
@@ -148,6 +149,9 @@ if Code.ensure_loaded?(LazyHTML) do
 
     defp words({:bad_budget, slot, size, answer}),
       do: "budget for #{inspect(slot)} at #{inspect(size)} answered #{inspect(answer)}"
+
+    defp words({:ignores_binding, slot}),
+      do: "does not read the fields bound in #{inspect(slot)} from the context's bindings"
 
     defp words(other), do: inspect(other)
 

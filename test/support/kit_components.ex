@@ -379,3 +379,78 @@ defmodule Macaw.Component.Test.Chart do
     {:safe, image <> canvas <> stop <> ~s(<p id="#{desc}">#{length(rows)} values</p>) <> table}
   end
 end
+
+defmodule Macaw.Component.Test.Honest.Bound do
+  @moduledoc false
+  # A table of a bound slot, reading each role's field from the context's bindings and
+  # heading each column with its field's name.
+  use Macaw.Component, name: "test.honest.bound", kinds: [:content]
+  alias Macaw.Component.{Context, Test.Kit}
+  alias Macaw.Data.{Delivery, Table}
+
+  @impl true
+  def declarations(_settings),
+    do:
+      {:ok,
+       slots: %{
+         "points" => %{
+           requires: %{"label" => %{type: :category}, "values" => %{type: :number, many: true}}
+         }
+       }}
+
+  @impl true
+  def render(:content, %{drawn: :live, context: ctx, deliveries: deliveries} = assigns) do
+    fields = [
+      Context.field(ctx, "points", "label") | Context.field(ctx, "points", "values")
+    ]
+
+    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows()
+
+    Kit.drawn_or(
+      assigns,
+      ~s(<table><caption>Points</caption><thead><tr>) <>
+        Enum.map_join(fields, "", &~s(<th scope="col">#{&1}</th>)) <>
+        "</tr></thead><tbody>" <>
+        Enum.map_join(rows, "", fn row ->
+          "<tr>" <> Enum.map_join(fields, "", &"<td>#{Table.get(row, &1)}</td>") <> "</tr>"
+        end) <> "</tbody></table>"
+    )
+  end
+
+  def render(:content, assigns), do: Kit.drawn_or(assigns, "")
+end
+
+defmodule Macaw.Component.Test.Broken.Bound do
+  @moduledoc false
+  # As Honest.Bound, but its values column reads the field "v" whatever the binding says.
+  use Macaw.Component, name: "test.broken.bound", kinds: [:content]
+  alias Macaw.Component.{Context, Test.Kit}
+  alias Macaw.Data.{Delivery, Table}
+
+  @impl true
+  def declarations(_settings),
+    do:
+      {:ok,
+       slots: %{
+         "points" => %{
+           requires: %{"label" => %{type: :category}, "values" => %{type: :number, many: true}}
+         }
+       }}
+
+  @impl true
+  def render(:content, %{drawn: :live, context: ctx, deliveries: deliveries} = assigns) do
+    label = Context.field(ctx, "points", "label")
+    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows()
+
+    Kit.drawn_or(
+      assigns,
+      ~s(<table><caption>Points</caption><thead><tr><th scope="col">#{label}</th>) <>
+        ~s(<th scope="col">Value</th></tr></thead><tbody>) <>
+        Enum.map_join(rows, "", fn row ->
+          "<tr><td>#{Table.get(row, label)}</td><td>#{Table.get(row, "v")}</td></tr>"
+        end) <> "</tbody></table>"
+    )
+  end
+
+  def render(:content, assigns), do: Kit.drawn_or(assigns, "")
+end

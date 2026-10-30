@@ -20,6 +20,17 @@ defmodule Macaw.Component.ConformanceTest do
     {Honest.Scene, [now: @now, fixtures: [%{deliveries: %{"frames" => @sections}}]]}
   ]
 
+  @points Delivery.new([%{name: "a", v: 1, w: 2}, %{name: "b", v: 3, w: nil}])
+  @bound [
+    fixtures: [
+      %{
+        deliveries: %{"points" => @points},
+        bindings: %{"points" => %{"label" => "name", "values" => ["v", "w"]}}
+      }
+    ],
+    now: @now
+  ]
+
   defp broken(flaw, check),
     do: Conformance.check(check, Broken, fixtures: [%{settings: %{"flaw" => flaw}}], now: @now)
 
@@ -49,7 +60,8 @@ defmodule Macaw.Component.ConformanceTest do
                :ids,
                :drawn,
                :budget,
-               :contained
+               :contained,
+               :bindings
              ]
 
     assert Conformance.check_sets() == [:visual]
@@ -180,6 +192,7 @@ defmodule Macaw.Component.ConformanceTest do
     for check <- Conformance.checks() do
       failed? =
         Conformance.check(check, Broken.Scene, now: @now) != [] or
+          Conformance.check(check, Broken.Bound, @bound) != [] or
           Enum.any?(Broken.flaws(), &(broken(&1, check) != []))
 
       assert failed?, "no broken component fails #{check}"
@@ -281,5 +294,49 @@ defmodule Macaw.Component.ConformanceTest do
 
     for check <- [:delivery, :names, :keyboard, :colors, :headings, :ids, :modes],
         do: assert(broken("none", check) == [], "#{check}")
+  end
+
+  @tag verifies: "kit-bindings"
+  test "the bindings check passes a component that reads its fields from the context, and finds one that doesn't" do
+    assert Conformance.check(Honest.Bound, @bound) == []
+
+    # Rows keyed by string, tuple rows with names and types, and a column map rename too.
+    for points <- [
+          Delivery.new([%{"name" => "a", "v" => 1, "w" => 2}]),
+          Delivery.new([{"a", 1, 2}, {"b", 3, 4}], names: [:name, :v, :w], types: %{v: :number}),
+          Delivery.new(%{name: ["a", "b"], v: [1, 2], w: [3, 4]})
+        ] do
+      opts = put_in(@bound, [:fixtures, Access.at(0), :deliveries, "points"], points)
+      assert Conformance.check(:bindings, Honest.Bound, opts) == [], inspect(points)
+
+      assert Conformance.check(:bindings, Broken.Bound, opts) ==
+               [bindings: {{"fixture 1", :content, :live}, {:ignores_binding, "points"}}]
+    end
+
+    [finding] = Conformance.check(:bindings, Broken.Bound, @bound)
+    assert finding == {:bindings, {{"fixture 1", :content, :live}, {:ignores_binding, "points"}}}
+
+    assert Conformance.format(finding) ==
+             ~s{bindings (fixture 1, :content, live): does not read the fields bound in "points" from the context's bindings}
+
+    # A fixture without bindings is not probed; every check renders with a fixture's bindings.
+    unbound = [fixtures: [%{deliveries: %{"points" => @points}}], now: @now]
+    assert Conformance.check(:bindings, Broken.Bound, unbound) == []
+    assert Conformance.check(Honest.Bound, @bound) == []
+
+    # A contained component's value is rebuilt from the renamed deliveries.
+    scene = [
+      fixtures: [%{deliveries: %{"frames" => @points}, bindings: %{"frames" => %{"n" => "v"}}}],
+      now: @now
+    ]
+
+    assert Conformance.check(:bindings, Honest.Scene, scene) == []
+
+    assert_raise ArgumentError, ~r/does not make a context/, fn ->
+      Conformance.check(:bindings, Honest.Bound,
+        fixtures: [%{bindings: %{"points" => %{"label" => ""}}}],
+        now: @now
+      )
+    end
   end
 end

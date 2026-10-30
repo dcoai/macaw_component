@@ -16,7 +16,7 @@ Every component runs **one kit**, `Macaw.Component.Conformance`: the contract of
 - `check_sets:` the check sets to run after the checks, `[]` by default.
 - `theme:`, the theme the contexts carry, `Macaw.Layers.Theme.default()` by default; `size:`, `{640, 400}` by default; `now:`, the moment the check starts by default.
 
-**How a check renders.** For each fixture, each kind and each mode, the kit builds a context (instance `"kit-a"`, heading level 2, the options' theme, size and now), validated settings, declarations and assigns (02 §1): a `:pure` component gets the fixture's deliveries; a `:contained` one gets the value of `init/2`, then `delivery/3` for each delivered slot, then `size/2`. It renders with `drawn: :live` (`:loading` when a slot the component declares has no delivery), and reads the result through `Phoenix.HTML.Safe.to_iodata/1`.
+**How a check renders.** For each fixture, each kind and each mode, the kit builds a context (instance `"kit-a"`, heading level 2, the options' theme, size and now, and the fixture's bindings), validated settings, declarations and assigns (02 §1): a `:pure` component gets the fixture's deliveries; a `:contained` one gets the value of `init/2`, then `delivery/3` for each delivered slot, then `size/2`. It renders with `drawn: :live` (`:loading` when a slot the component declares has no delivery), and reads the result through `Phoenix.HTML.Safe.to_iodata/1`.
 
 ```test:kit-layers
 an honest component passes every check; check/3 answers one check's findings and check/2 all of them; every finding formats as a line
@@ -28,7 +28,7 @@ use writes one test per check into a describe block, refuses a missing component
 
 ## 2. The checks {#components-kit-checks}
 
-`checks/0` is these twelve, in order:
+`checks/0` is these thirteen, in order:
 
 | Check | Holds |
 |---|---|
@@ -44,6 +44,7 @@ use writes one test per check into a describe block, refuses a missing component
 | `:drawn` | each of the eight drawn states, assigned in turn, renders in each mode with text a person reads (text content, or a named `role="img"`); never blank |
 | `:budget` | `budget/4` answers `{:ok, _}` for each slot of each fixture at `{320, 200}`, `{640, 400}` and `{1280, 800}` |
 | `:contained` | for a `:contained` component: `init`, `delivery` for each delivered slot, `size`, and `bound` for each bindable parameter at its default, each answering a value that renders; equal inputs give equal values. A `:pure` component passes with no finding |
+| `:bindings` | for each fixture with bindings, each kind, in live mode: the component reads each slot's fields from the context's bindings (02 §2). The kit renders once as given, then again with the fields bound in one slot renamed to fresh tokens (`mwbound0`, `mwbound1`, …) in that slot's delivery (row-map keys by either spelling, or `names:` for tuple rows, and `types:`) and in the context's bindings, a `:contained` component's value rebuilt from the renamed deliveries. Each token is mapped back to its field in the second render's markup, so a component that labels a header or an axis by field name still passes, and drawn-token values are not compared. The two must read the same, else `{:ignores_binding, slot}`. A fixture without bindings is not probed |
 
 **Findings name where and what failed** (`{:kinds, {{"fixture 1", :navigation, :live}, {:unnamed_nav, "nav(0)"}}}`, `{:delivery, {where, {:style_attribute, "p#kit-a-x"}}}`, `{:ids, {where, {:unstable, id}}}`), an element as its tag and its id or document position, so a finding reads without the render at hand. `format/1` words one as `check (fixture, kind, mode): what`.
 
@@ -51,6 +52,10 @@ use writes one test per check into a describe block, refuses a missing component
 
 ```test:kit-checks
 every check is failed by a component built to break it, with the finding that names the rule, and every check is passed by the honest components
+```
+
+```test:kit-bindings
+a component that reads its fields from the context's bindings passes the bindings check, whatever shape its rows take; one that hard-codes a field name is found ignoring the binding, naming the slot; a fixture without bindings is not probed; a contained component's value is rebuilt from the renamed deliveries
 ```
 
 ```test:kit-drawn-budget-contained
@@ -63,7 +68,8 @@ A component whose declarations depend on its settings ships **a fixture set**, o
 - `name`: how a finding names it, `"fixture <index>"` by default;
 - `settings`: the settings, `%{}` by default;
 - `deliveries`: a delivery per slot, `%{}` by default;
-- `events`: the event names the fixture's interaction produces, checked as declared, `[]` by default.
+- `events`: the event names the fixture's interaction produces, checked as declared, `[]` by default;
+- `bindings`: the cell's resolved bindings, in the shape of the context's `bindings` (02 §2), `%{}` by default. Every context the kit builds for the fixture carries them, so every check renders with them, and the `:bindings` check probes them.
 
 An unknown key is refused with `ArgumentError`.
 
@@ -73,7 +79,7 @@ the kit runs every fixture and names a finding by its fixture; defaults fill a b
 
 ## 4. Check sets {#components-kit-sets}
 
-A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after the twelve, for each fixture, and their findings are shaped like any other's.
+A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after the thirteen, for each fixture, and their findings are shaped like any other's.
 
 **The visual check set**, `:visual`, for components that draw data (visualize's visuals):
 

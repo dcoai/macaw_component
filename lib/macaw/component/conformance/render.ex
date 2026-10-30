@@ -8,7 +8,7 @@ if Code.ensure_loaded?(LazyHTML) do
     alias Macaw.Component.{Assigns, Context}
     alias Macaw.Component.Conformance.Html
 
-    @fixture_keys [:name, :settings, :deliveries, :events]
+    @fixture_keys [:name, :settings, :deliveries, :events, :bindings]
 
     @doc false
     # The fixtures with their defaults; an unknown key raises ArgumentError.
@@ -25,7 +25,10 @@ if Code.ensure_loaded?(LazyHTML) do
                 "#{inspect(key)} is not a fixture key; a fixture takes #{inspect(@fixture_keys)}"
         end
 
-        Map.merge(%{name: "fixture #{i}", settings: %{}, deliveries: %{}, events: []}, fixture)
+        Map.merge(
+          %{name: "fixture #{i}", settings: %{}, deliveries: %{}, events: [], bindings: %{}},
+          fixture
+        )
       end)
     end
 
@@ -43,24 +46,32 @@ if Code.ensure_loaded?(LazyHTML) do
     end
 
     @doc false
-    @spec context(keyword(), keyword()) :: Context.t()
-    def context(opts, overrides \\ []) do
-      {:ok, context} =
-        Context.new(
-          Keyword.merge(
-            [
-              mode: :live,
-              instance: "kit-a",
-              size: Keyword.fetch!(opts, :size),
-              heading_level: 2,
-              theme: Keyword.fetch!(opts, :theme),
-              now: Keyword.fetch!(opts, :now)
-            ],
-            overrides
-          )
+    # A fixture's context, carrying its bindings; bindings the context refuses raise
+    # ArgumentError, a fault in the fixture.
+    @spec context(keyword(), map(), keyword()) :: Context.t()
+    def context(opts, fixture, overrides \\ []) do
+      attrs =
+        Keyword.merge(
+          [
+            mode: :live,
+            instance: "kit-a",
+            size: Keyword.fetch!(opts, :size),
+            heading_level: 2,
+            theme: Keyword.fetch!(opts, :theme),
+            now: Keyword.fetch!(opts, :now),
+            bindings: fixture.bindings
+          ],
+          overrides
         )
 
-      context
+      case Context.new(attrs) do
+        {:ok, context} ->
+          context
+
+        {:error, faults} ->
+          raise ArgumentError,
+                "#{fixture.name} does not make a context: #{inspect(faults)}"
+      end
     end
 
     @doc false
@@ -111,9 +122,13 @@ if Code.ensure_loaded?(LazyHTML) do
     @doc false
     # A render read as a tree.
     @spec render(module(), Component.kind(), map()) :: list()
-    def render(module, kind, assigns) do
-      module.render(kind, assigns) |> Phoenix.HTML.Safe.to_iodata() |> Html.parse()
-    end
+    def render(module, kind, assigns), do: module |> markup(kind, assigns) |> Html.parse()
+
+    @doc false
+    # A render's markup, before it is read.
+    @spec markup(module(), Component.kind(), map()) :: iodata()
+    def markup(module, kind, assigns),
+      do: module.render(kind, assigns) |> Phoenix.HTML.Safe.to_iodata()
 
     @doc false
     # Every fixture that sets up, each kind and the given modes, rendered: `{where, tree}`
@@ -129,7 +144,7 @@ if Code.ensure_loaded?(LazyHTML) do
           {:ok, settings, declarations} <- [setup(module, fixture)],
           kind <- info.kinds,
           mode <- modes do
-        context = context(opts, Keyword.put(overrides, :mode, mode))
+        context = context(opts, fixture, Keyword.put(overrides, :mode, mode))
         assigns = assigns(module, fixture, settings, declarations, context)
         {{fixture.name, kind, mode}, render(module, kind, assigns)}
       end

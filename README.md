@@ -25,7 +25,7 @@ A component package (visualize's visuals, metresis's panels, the core's built-in
 | `Macaw.Component.Drawn` | drawn states, their roles, glyphs, words and static notice | [02 §6](https://github.com/dcoai/macaw_component/blob/main/spec/02-rendering.md#components-states) |
 | `Macaw.Component.Client` | the fixed names of the client protocols, the data attributes that hand a component's declared names to the client, and the shared client module (`priv/static/macaw_component/client.js`) | [02 §8](https://github.com/dcoai/macaw_component/blob/main/spec/02-rendering.md#components-client) |
 | `Macaw.Component.Package` | the package side of the registry | [03](https://github.com/dcoai/macaw_component/blob/main/spec/03-packages.md#components-packages) |
-| `Macaw.Component.Conformance` | the conformance kit: twelve checks, fixtures and the visual check set (needs `lazy_html`) | [04](https://github.com/dcoai/macaw_component/blob/main/spec/04-conformance.md#components-kit) |
+| `Macaw.Component.Conformance` | the conformance kit: thirteen checks, fixtures and the visual check set (needs `lazy_html`) | [04](https://github.com/dcoai/macaw_component/blob/main/spec/04-conformance.md#components-kit) |
 
 ```elixir
 defmodule MyApp.CardsConformanceTest do

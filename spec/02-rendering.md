@@ -36,14 +36,20 @@ assigns are built from the six keys, a missing or unknown key is a fault, and a 
 | `theme` | a `%Macaw.Layers.Theme{}` | `Macaw.Layers.Theme.default()` |
 | `preferences` | `%{zone, units, shortcuts}`: a time zone name, one of `Macaw.Data.Quantity.systems/0`, and which page shortcuts are on with their keys | `%{zone: "Etc/UTC", units: :as_posted, shortcuts: %{}}` |
 | `now` | the holder's now, a `DateTime`, which events carry as their time | required |
+| `bindings` | the cell's resolved bindings, `%{slot => %{role => field \| [field, …]}}`: slot and role names and fields are non-empty strings, a `many` role's fields a non-empty list | `%{}` |
 
 - **The host computes it.** On a page, the core computes each instance's context; elsewhere (a visualize chart in a plain LiveView, a test) the adopter builds one. The component never knows which ([macaw_compose 05 §7](https://github.com/dcoai/macaw/blob/main/spec/05-components.md#components-libraries)).
 - **`now` is never a clock read** by the component: a Macaw surface supplies its own clock, which tests and replays control. A standalone holder may default its now to the wall clock, injectably ([macaw_data 01 §8.1](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event-rules)).
 - **`Context.heading(context, depth)`** is the heading element for a heading `depth` levels below the component's top (`0` for its top), `"h<level + depth>"`, never past `"h6"`, so a component never hard-codes a level.
+- **The binding arrives in the context.** The host computes `bindings` from the cell's binding of each slot, resolved by `Macaw.Component.Slot.resolve/3` (01 §1.3): an unbound `window` role holds the window field it reads, and an unbound optional role is absent, so a component never repeats the defaulting rule. A bad binding is a fault at its path under `[:bindings]`. **`Context.field(context, slot, role)`** answers the field bound to a role, the list of fields for a `many` role, or `nil` for a slot or role not bound. The rows keep the source's names; the component reads them by the bound field. This keeps §1 true: the binding reaches a component inside its context, and a contained component's `init/2` receives it too.
 - **`Context.id(context, local)`** is an element id unique to the instance, `"<instance>-<local>"`, `local` a non-empty string of letters, digits, `-` and `_`; so two instances never share an id and an id is stable across renders (§5).
 
 ```test:context-new
 a context defaults its font size, level, theme and preferences; every bad field is a fault at once; an unknown field is a fault
+```
+
+```test:context-bindings
+bindings default to %{}, carry each slot's resolved role-to-field map, and a bad slot, role or field is a fault at its path under bindings; field/3 answers a role's field, a many role's list, or nil
 ```
 
 ```test:context-helpers

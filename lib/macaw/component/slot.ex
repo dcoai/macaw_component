@@ -140,6 +140,38 @@ defmodule Macaw.Component.Slot do
     end
   end
 
+  @doc """
+  The resolved binding of a slot (as `new/1` builds it) to a source of `schema`, for
+  `fields` that `check/3` passes: each bound role mapped to its field, a string, or for a
+  `many` role its list of fields. A `window` role left unbound holds the schema's window
+  field, by `check/3`'s rule; an optional role left unbound is absent. This is the map a
+  host puts in the context's `bindings` (spec/02 §2), so the core and every adopter
+  resolve a binding the same way. Fields `check/3` refuses raise `ArgumentError`.
+
+      iex> {:ok, slot} = Macaw.Component.Slot.new(%{requires: %{"x" => %{type: :time, window: true}, "y" => %{type: :number, many: true}, "label" => %{type: :text, optional: true}}})
+      iex> schema = Macaw.Data.Schema.new!(%{t: %{type: :time}, v: %{type: :number}, w: %{type: :number}})
+      iex> Macaw.Component.Slot.resolve(slot, schema, %{"y" => [:v, :w]})
+      %{"x" => "t", "y" => ["v", "w"]}
+  """
+  @spec resolve(t(), Schema.t(), map()) :: %{String.t() => String.t() | [String.t(), ...]}
+  def resolve(%{requires: requires} = slot, %Schema{} = schema, fields) when is_map(fields) do
+    case check(slot, schema, fields) do
+      :ok ->
+        for {role, req} <- requires,
+            {:ok, names} <- [bound(req, schema, Map.fetch(fields, role))],
+            into: %{},
+            do: {role, resolved(req, Enum.map(names, &to_string/1))}
+
+      {:error, faults} ->
+        raise ArgumentError,
+              "the binding does not pass Slot.check/3, so it does not resolve: " <>
+                inspect(faults)
+    end
+  end
+
+  defp resolved(%{many: true}, names), do: names
+  defp resolved(_req, [name]), do: name
+
   defp bound(%{window: true}, schema, :error) do
     case Schema.window_field(schema) do
       nil -> :unbound
