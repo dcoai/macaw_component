@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.2.0 (2026-10-30)
+
 ### Upgrading from 0.1.5
 
 macaw_component's own functions are unchanged; what changes is the dependencies' terms that pass through them, to a component and to a host.
