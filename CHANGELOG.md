@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.5 (2026-10-30)
+
 - The shared client module for hooks, `priv/static/macaw_component/client.js`: the announcer (two regions found or created once per page; requests queued, merged and rate-limited, undeclared names dropped) and the client bus (`window.MacawBus`; undeclared keys refused, values passed through uninspected). One ES module, no build step, no dependencies; served with `Plug.Static, from: {:macaw_component, "priv/static"}` and imported from `/macaw_component/client.js`. `priv` ships in the package (dco-tek/macaw/macaw#142, spec/02 §8).
 - `%Macaw.Component.Context{}` gains `bindings`, the cell's resolved bindings, `%{slot => %{role => field | [field, …]}}`, `%{}` by default and checked by `Context.new/1` at paths under `[:bindings]`; `Context.field/3` answers the field bound to a role, a `many` role's list, or `nil`. A slot's binding now reaches the component, inside its context (dco-tek/macaw/macaw#194, #2, spec/02 §2).
 - `Macaw.Component.Slot.resolve/3`: the resolved role → field map of a binding `check/3` passes, an unbound `window` role holding the window field and an unbound optional role absent; the one source of the defaulting rule for the core and adopters (dco-tek/macaw/macaw#194, #2, spec/01 §1.3).
