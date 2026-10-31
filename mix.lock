@@ -13,5 +13,5 @@
   "nimble_parsec": {:hex, :nimble_parsec, "1.4.2", "8efba0122db06df95bfaa78f791344a89352ba04baedd3849593bfce4d0dc1c6", [:mix], [], "hexpm", "4b21398942dda052b403bbe1da991ccd03a053668d147d53fb8c4e0efe09c973"},
   "phoenix_html": {:hex, :phoenix_html, "4.4.0", "d4007bc52fee85af48c30a0d541a5b0590e4f1f12f2f9c227bb004620090c0e3", [:mix], [], "hexpm", "94832038da7ab8f86d4c0d36f7797a269fd06fe611f25c69f55108c075505228"},
   "stream_data": {:hex, :stream_data, "1.4.0", "026f929db613aabea6208012ae9b8970d3fd5f88b3bdf26831bc536f98c42036", [:mix], [], "hexpm", "2b0ee3a340dcce1c8cf6302a763ee757d1e01c54d6e16d9069062509d68b1dc9"},
-  "surfex": {:hex, :surfex, "0.10.0", "2e7305af9cfe8f705436e64ae813dbec8097ab75b0023f2ac8a2e0e5663bc4bc", [:mix], [], "hexpm", "52cdb3f228e0af54cf4a59553e5a27947c7cb8760a2fe57bee0373d267dc5739"},
+  "surfex": {:hex, :surfex, "0.11.0", "fd4ceac18b088d00993b9fab32712d4276ca220be6c0d4a6a91d4a83bdb5e666", [:mix], [], "hexpm", "015256c64f69723f89bedc6ea217d19b99546ba89a4e6f3c70970ad459a67fee"},
 }

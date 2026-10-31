@@ -60,7 +60,7 @@ defmodule Macaw.Component.MixProject do
       # Docs for Hex (macaw_compose#155); dev only.
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       # Spec, tests and code kept aligned (macaw_compose spec/00 §4.1); dev/test only.
-      {:surfex, "~> 0.10.0", only: [:dev, :test], runtime: false}
+      {:surfex, "~> 0.11.0", only: [:dev, :test], runtime: false}
     ]
   end
 end
