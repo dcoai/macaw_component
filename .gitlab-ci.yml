@@ -54,6 +54,15 @@ spelling:
 
 # Every spec link resolves (ci/spec_links.exs): links into another Macaw
 # repository's spec are checked by shape here, where no sibling checkout exists.
+# No locked package has a security advisory or is retired, outside the reasoned
+# allowlist ci/advisories_allowlist.exs (ci/advisories.exs, the family's copy,
+# dco-tek/macaw/macaw#214). It needs the dependencies fetched.
+audit:
+  extends: .elixir
+  stage: check
+  script:
+    - elixir ci/advisories.exs
+
 spec-links:
   image: $ELIXIR_IMAGE
   stage: check

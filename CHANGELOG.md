@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI runs the family's dependency advisories guard (`ci/advisories.exs`, with a reasoned allowlist that defaults empty), so a locked package with a security advisory, or a retired one, fails the pipeline; phoenix_html is locked at 4.4.0 (EEF-CVE-2026-117645) (#4, macaw#214).
 ## v0.2.0 (2026-10-30)
 
 ### Upgrading from 0.1.5
