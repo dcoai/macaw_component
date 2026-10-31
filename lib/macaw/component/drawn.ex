@@ -90,6 +90,20 @@ defmodule Macaw.Component.Drawn do
      ]}
   end
 
+  @doc """
+  The notices' static stylesheet in this package, relative to its root: a rule for every
+  class `render/2` emits, drawn from the theme's custom properties.
+  """
+  @spec stylesheet_path() :: String.t()
+  def stylesheet_path, do: "priv/static/macaw_component/drawn.css"
+
+  @doc """
+  The same-origin path a page links the stylesheet from, where a host serves `priv/static`
+  as it does for the shared client module (`Macaw.Component.Client.module_url/0`).
+  """
+  @spec stylesheet_url() :: String.t()
+  def stylesheet_url, do: "/macaw_component/drawn.css"
+
   defp state!(state) do
     state in @states ||
       raise ArgumentError,

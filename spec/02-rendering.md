@@ -133,11 +133,16 @@ the kit finds each rule broken by a render that breaks it, and nothing in a rend
 - `role/1` is the state's theme role ([macaw_layers 04](https://github.com/dcoai/macaw_layers/blob/main/spec/04-themes.md)): `crashed` and `down` `:bad`, `invalid` and `stale` `:warning`, `loading` and `capped` `:info`, `no_data` `:neutral`, and `live` `nil`. `glyph/1` is that role's cue glyph (`Macaw.Layers.Theme.cue/1`), `nil` for `live`.
 - `words/1` is the state's words: "Couldn't be drawn", "Source unavailable", "Invalid settings", "Loading", "No data", "Out of date", "Showing part of the data", and `nil` for `live`.
 - `render(state, context)` is a static notice for a state other than `live`, which a component may draw as its own: `<p class="mw-drawn mw-drawn-<state>" data-mw-drawn="<state>">`, a glyph element with the role's class and `aria-hidden="true"`, then the words. It is not a live region, so it holds in every mode. `render(:live, context)` is empty.
+- **The notices' stylesheet** ships in the package: `Drawn.stylesheet_path/0`, `priv/static/macaw_component/drawn.css`, served by the host as the rest of `priv/static` (§8.2) at `Drawn.stylesheet_url/0`, `"/macaw_component/drawn.css"`, and linked from the page. It has a rule for every class `render/2` emits: the notice (its edge in its role's color), each state, the glyph, each role's color, and each glyph's shape. Every color is a theme custom property ([macaw_layers 04 §6](https://github.com/dcoai/macaw_layers/blob/main/spec/04-themes.md#themes-delivery)) with the default theme's value as its fallback, so a notice draws in the theme it sits under. In forced-colors mode the glyph keeps the system's text color. It has no `url(` and no `@import`, so it holds under the strict policy as it is.
 
 How a host computes the state from deliveries and faults (a delivery's `capped` and `reduced_by`, its age against the source's continuity, a crashed process) is the host's.
 
 ```test:drawn-states
 all/0 is the eight in precedence order and pick/1 the highest of a list; every state but live has a role, a glyph and words; the static notice is never blank and is not a live region
+```
+
+```test:drawn-stylesheet
+the stylesheet is at its path in the package and served at its url; it has a rule for every class a notice of every state emits; every color in it is a theme property; it has no url( and no @import
 ```
 
 ## 7. The contained value {#components-contained}

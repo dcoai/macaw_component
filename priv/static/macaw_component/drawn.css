@@ -1,0 +1,97 @@
+/* The drawn states' notices (macaw_component spec/02 §6), served from the package's
+   priv/static as /macaw_component/drawn.css. Every color is the theme's custom property
+   (macaw_layers spec/04 §6), with the default theme's value as its fallback, so a notice
+   draws in whichever theme class it sits under. It loads nothing and imports nothing. */
+
+.mw-drawn {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0;
+  padding: 0.5em 0.75em;
+  font-family: var(--mw-font-family, sans-serif);
+  color: var(--mw-text, #333333);
+  background-color: var(--mw-surface, #eef2f6);
+  border-inline-start: 0.25em solid var(--mw-neutral, #6f7480);
+}
+
+/* Each state's edge is its role's color. */
+.mw-drawn-crashed,
+.mw-drawn-down {
+  border-inline-start-color: var(--mw-bad, #c23238);
+}
+
+.mw-drawn-invalid,
+.mw-drawn-stale {
+  border-inline-start-color: var(--mw-warning, #bd7407);
+}
+
+.mw-drawn-loading,
+.mw-drawn-capped {
+  border-inline-start-color: var(--mw-info, #3b6fa8);
+}
+
+.mw-drawn-no-data {
+  border-inline-start-color: var(--mw-neutral, #6f7480);
+}
+
+/* The glyph: a shape in its role's color, a cue beside the words, never alone. */
+.mw-glyph {
+  display: inline-block;
+  flex: none;
+  inline-size: 0.75em;
+  block-size: 0.75em;
+  background-color: currentColor;
+}
+
+.mw-role-good {
+  color: var(--mw-good, #4ca34b);
+}
+
+.mw-role-warning {
+  color: var(--mw-warning, #bd7407);
+}
+
+.mw-role-bad {
+  color: var(--mw-bad, #c23238);
+}
+
+.mw-role-info {
+  color: var(--mw-info, #3b6fa8);
+}
+
+.mw-role-neutral {
+  color: var(--mw-neutral, #6f7480);
+}
+
+.mw-glyph-circle {
+  border-radius: 50%;
+}
+
+.mw-glyph-square {
+  border-radius: 0;
+}
+
+.mw-glyph-diamond {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.mw-glyph-triangle {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.mw-glyph-cross {
+  clip-path: polygon(20% 0, 50% 30%, 80% 0, 100% 20%, 70% 50%, 100% 80%, 80% 100%, 50% 70%, 20% 100%, 0 80%, 30% 50%, 0 20%);
+}
+
+/* In high-contrast mode the shape keeps its system text color rather than vanishing. */
+@media (forced-colors: active) {
+  .mw-glyph {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  .mw-drawn {
+    border-inline-start-color: CanvasText;
+  }
+}

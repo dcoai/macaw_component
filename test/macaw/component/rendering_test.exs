@@ -255,6 +255,37 @@ defmodule Macaw.Component.RenderingTest do
     assert_raise ArgumentError, ~r/not a feature/, fn -> Mode.allows?(:live, sound) end
   end
 
+  @tag verifies: "drawn-stylesheet"
+  test "the notices' stylesheet styles every class a notice emits, in the theme's colors only" do
+    assert Drawn.stylesheet_path() == "priv/static/macaw_component/drawn.css"
+    assert Drawn.stylesheet_url() == "/macaw_component/drawn.css"
+    css = File.read!(Path.join(Application.app_dir(:macaw_component), Drawn.stylesheet_path()))
+
+    classes =
+      for state <- Drawn.all(),
+          html = state |> Drawn.render(nil) |> Phoenix.HTML.safe_to_string(),
+          [_, list] <- Regex.scan(~r/class="([^"]+)"/, html),
+          class <- String.split(list),
+          uniq: true,
+          do: class
+
+    assert "mw-glyph-cross" in classes and "mw-drawn-no-data" in classes
+
+    for class <- classes,
+        do: assert(css =~ ~r/\.#{class}[\s,{]/, "no rule for .#{class}")
+
+    refute css =~ "url("
+    refute css =~ "@import"
+
+    # Every color is the theme's property: a literal only as a var()'s fallback, or the
+    # system colors under forced-colors.
+    for [_, property, value] <-
+          Regex.scan(~r/([a-z-]*color|border-inline-start):\s*([^;]+);/, css),
+        value not in ["currentColor", "CanvasText"],
+        do:
+          assert(value =~ ~r/var\(--mw-[a-z-]+/, "#{property}: #{value} is not a theme property")
+  end
+
   @tag verifies: "drawn-states"
   test "the eight states in precedence; every state but live has a role, a glyph and words" do
     assert Drawn.all() == [:crashed, :down, :invalid, :loading, :no_data, :stale, :capped, :live]
