@@ -1,14 +1,16 @@
 defmodule Macaw.Component.Context do
   @moduledoc """
   The context a component renders in (spec/02 §2): its mode, instance, size, root font
-  size, heading level, theme, the viewer's preferences, the holder's now, and the cell's
-  resolved bindings.
+  size, heading level, theme, the viewer's preferences, the holder's now, the cell's
+  resolved bindings, and each bound slot's schema.
 
   The host computes it: on a page the core, elsewhere the adopter. The component never
   knows which, and never reads a clock: `now` is the holder's. `bindings` is
   `%{slot => %{role => field | [field, ...]}}`, each slot's binding as
   `Macaw.Component.Slot.resolve/3` resolves it, so a component reads the field bound to a
-  role with `field/3` and never repeats the defaulting rule.
+  role with `field/3` and never repeats the defaulting rule. `schemas` is
+  `%{slot => Macaw.Data.Schema.t()}`, the schema each bound slot's source describes, so a
+  component heads a field with its `label/3` and `unit/3`.
 
       iex> {:ok, ctx} = Macaw.Component.Context.new(mode: :live, instance: "cards-1", size: {640, 400}, now: ~U[2026-10-28 12:00:00Z])
       iex> {Macaw.Component.Context.heading(ctx, 0), Macaw.Component.Context.heading(ctx, 1)}
@@ -21,6 +23,7 @@ defmodule Macaw.Component.Context do
   """
 
   alias Macaw.Component.Mode
+  alias Macaw.Data.Schema
   alias Macaw.Layers.Theme
 
   @fields [
@@ -33,7 +36,8 @@ defmodule Macaw.Component.Context do
     :theme,
     :preferences,
     :now,
-    :bindings
+    :bindings,
+    :schemas
   ]
   @required [:mode, :instance, :size, :now]
   @local ~r/\A[A-Za-z0-9_-]+\z/
@@ -48,7 +52,8 @@ defmodule Macaw.Component.Context do
             theme: nil,
             preferences: %{zone: "Etc/UTC", units: :as_posted, shortcuts: %{}},
             now: nil,
-            bindings: %{}
+            bindings: %{},
+            schemas: %{}
 
   @type t :: %__MODULE__{
           mode: Mode.t(),
@@ -60,7 +65,8 @@ defmodule Macaw.Component.Context do
           theme: Theme.t(),
           preferences: %{zone: String.t(), units: atom(), shortcuts: map()},
           now: DateTime.t(),
-          bindings: %{String.t() => %{String.t() => String.t() | [String.t(), ...]}}
+          bindings: %{String.t() => %{String.t() => String.t() | [String.t(), ...]}},
+          schemas: %{String.t() => Schema.t()}
         }
 
   @doc "The fields, in the order of spec/02 §2's table."
@@ -73,7 +79,9 @@ defmodule Macaw.Component.Context do
   `:required`. The theme defaults to `Macaw.Layers.Theme.default()`. A bad binding is a
   fault at its path under `[:bindings]`: `:not_a_map`, `:bad_name` for a slot or role
   that is not a non-empty string, `:not_a_field` for a field that is neither a non-empty
-  string nor a non-empty list of them.
+  string nor a non-empty list of them. A bad `schemas` is a fault under `[:schemas]`:
+  `:not_a_map`, `:bad_name` for a slot, `:not_a_schema` for a value that is no
+  `%Macaw.Data.Schema{}`.
   """
   @spec new(keyword() | map()) :: {:ok, t()} | {:error, [Macaw.Component.fault(), ...]}
   def new(attrs) when is_list(attrs) or is_map(attrs) do
@@ -97,6 +105,15 @@ defmodule Macaw.Component.Context do
   end
 
   defp faults(:bindings, bindings), do: binding_faults(bindings)
+
+  defp faults(:schemas, %{} = schemas) when not is_struct(schemas) do
+    Enum.flat_map(schemas, fn {slot, schema} ->
+      name = if name?(slot), do: [], else: [{[:schemas, slot], :bad_name}]
+      name ++ if(match?(%Schema{}, schema), do: [], else: [{[:schemas, slot], :not_a_schema}])
+    end)
+  end
+
+  defp faults(:schemas, _schemas), do: [{[:schemas], :not_a_map}]
 
   defp faults(key, value) do
     case fault(key, value) do
@@ -173,6 +190,34 @@ defmodule Macaw.Component.Context do
   @spec field(t(), String.t(), String.t()) :: String.t() | [String.t(), ...] | nil
   def field(%__MODULE__{bindings: bindings}, slot, role),
     do: bindings |> Map.get(slot, %{}) |> Map.get(role)
+
+  @doc """
+  The words that head `field` of `slot`: its schema's `label`, else the field's name, so a
+  header never needs the schema to exist.
+  """
+  @spec label(t(), String.t(), String.t()) :: String.t()
+  def label(%__MODULE__{} = context, slot, field) when is_binary(field) do
+    case attribute(context, slot, field, :label) do
+      {:ok, label} -> label
+      :error -> field
+    end
+  end
+
+  @doc "The unit `field` of `slot` is posted in, its schema's UCUM `unit`, or `nil` for none."
+  @spec unit(t(), String.t(), String.t()) :: String.t() | nil
+  def unit(%__MODULE__{} = context, slot, field) when is_binary(field) do
+    case attribute(context, slot, field, :unit) do
+      {:ok, unit} -> unit
+      :error -> nil
+    end
+  end
+
+  defp attribute(%__MODULE__{schemas: schemas}, slot, field, key) do
+    case Map.fetch(schemas, slot) do
+      {:ok, schema} -> Schema.fetch(schema, field, key)
+      :error -> :error
+    end
+  end
 
   @doc """
   An element id unique to the instance, `"<instance>-<local>"`, stable across renders.

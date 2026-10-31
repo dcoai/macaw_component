@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The context carries each bound slot's schema (`schemas`, `%{slot => %Macaw.Data.Schema{}}`), and `Context.label/3` and `Context.unit/3` read a field's label and unit from it, falling back to the field's name and `nil`, so a component heads a field in the schema's words (#5, macaw#196, spec/02 §2).
 - CI runs the family's dependency advisories guard (`ci/advisories.exs`, with a reasoned allowlist that defaults empty), so a locked package with a security advisory, or a retired one, fails the pipeline; phoenix_html is locked at 4.4.0 (EEF-CVE-2026-117645) (#4, macaw#214).
 ## v0.2.0 (2026-10-30)
 

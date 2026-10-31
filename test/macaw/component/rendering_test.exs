@@ -80,7 +80,8 @@ defmodule Macaw.Component.RenderingTest do
                :theme,
                :preferences,
                :now,
-               :bindings
+               :bindings,
+               :schemas
              ]
 
     assert {:error, faults} =
@@ -156,6 +157,45 @@ defmodule Macaw.Component.RenderingTest do
       assert {:error, [{[:bindings | _], _reason}]} =
                Context.new(mode: :live, instance: "c1", size: {1, 1}, now: @now, bindings: bad)
     end
+  end
+
+  @tag verifies: "context-schemas"
+  test "a context carries each slot's schema; label/3 and unit/3 read it, or fall back" do
+    schema =
+      Macaw.Data.Schema.new!(%{
+        "p50" => %{type: :number, unit: "ms", label: "Median"},
+        "host" => %{type: :category}
+      })
+
+    assert context().schemas == %{}
+    ctx = context(schemas: %{"rows" => schema})
+    assert ctx.schemas == %{"rows" => schema}
+
+    assert {Context.label(ctx, "rows", "p50"), Context.unit(ctx, "rows", "p50")} ==
+             {"Median", "ms"}
+
+    assert {Context.label(ctx, "rows", "host"), Context.unit(ctx, "rows", "host")} ==
+             {"host", nil}
+
+    # A field the schema lacks, and a slot with no schema: the name, and no unit.
+    assert {Context.label(ctx, "rows", "zone"), Context.unit(ctx, "rows", "zone")} ==
+             {"zone", nil}
+
+    assert {Context.label(ctx, "other", "p50"), Context.unit(ctx, "other", "p50")} == {"p50", nil}
+
+    assert {:error, faults} =
+             Context.new(
+               mode: :live,
+               instance: "c1",
+               size: {1, 1},
+               now: @now,
+               schemas: %{"" => schema, "a" => %{"p50" => %{type: :number}}}
+             )
+
+    assert Enum.sort(faults) == [{[:schemas, ""], :bad_name}, {[:schemas, "a"], :not_a_schema}]
+
+    assert {:error, [{[:schemas], :not_a_map}]} =
+             Context.new(mode: :live, instance: "c1", size: {1, 1}, now: @now, schemas: [])
   end
 
   @tag verifies: "context-bindings"
