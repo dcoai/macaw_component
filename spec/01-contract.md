@@ -47,6 +47,8 @@ end
 @callback render(kind, assigns :: map()) :: Phoenix.HTML.safe()      # any Phoenix.HTML.Safe value
 @callback budget(slot :: String.t(), settings :: map(), size :: {number(), number()}) ::
             pos_integer() | nil                                       # optional, §1.4
+@callback order(slot :: String.t(), settings :: map()) ::
+            Macaw.Data.Source.Order.t()                               # optional, §1.4
 # a :contained component's transitions, §7 of 02:
 @callback init(settings :: map(), Macaw.Component.Context.t()) :: value
 @callback delivery(value, slot :: String.t(), Macaw.Data.Delivery.t()) :: value
@@ -54,7 +56,7 @@ end
 @callback bound(value, name :: String.t(), new :: term()) :: value
 ```
 
-- **`parameters/0`** defaults to `%{}`, and **`declarations/1`** to `{:ok, []}`; `budget/3` and the transitions are optional callbacks with no default.
+- **`parameters/0`** defaults to `%{}`, and **`declarations/1`** to `{:ok, []}`; `budget/3`, `order/2` and the transitions are optional callbacks with no default.
 - **`render/2`** answers any value of the `Phoenix.HTML.Safe` protocol: a HEEx render, `{:safe, iodata}`, or a string, escaped.
 
 **The dispatch functions** in `Macaw.Component` are how a host reaches a component. Each answers a value and never raises for a component's bad answer:
@@ -63,6 +65,7 @@ end
 - **`settings/2`**: given settings checked against the parameters by `Macaw.Data.Parameter.validate/2`, defaults filled in: `{:ok, settings}` or `{:error, faults}`.
 - **`declarations/2`**: settings validated by `settings/2` first, then `declarations/1` called and its answer built by `Macaw.Component.Declarations.new/2` (§1.2): `{:ok, %Declarations{}}` or `{:error, faults}`. An answer of neither shape is `{:error, [{[], {:bad_declarations, answer}}]}`.
 - **`budget/4`**: `{:ok, nil}` for a component without `budget/3`; otherwise `{:ok, rows}` for a positive integer or `nil`, and `{:error, {:bad_budget, answer}}` for anything else.
+- **`order/3`**: `{:ok, []}` for a component without `order/2`; otherwise `{:ok, order}` for an order of `Macaw.Data.Source.Order`'s shape, and `{:error, {:bad_order, answer}}` for anything else (§1.4).
 
 **Faults** are `{path, reason}` pairs, the path a list of keys from the declaration's root, every fault at once, ordered by path (as in [macaw_data 01 §1.8](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-schema-faults)). `Macaw.Component.format_fault/1` words one as a line a person reads.
 
@@ -184,6 +187,12 @@ A component that draws rows declares, for each slot, a **row budget** as a funct
 - **The host ceiling clamps every slot.** A slot whose budget exceeds the ceiling reads at the ceiling, reported as `reduced_by: :runtime` ([macaw_data 01](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-delivery)), and draws those rows. A component is never handed nothing because it asked for too much.
 - **Sources are pooled at the largest budget** among their readers, and each reader is reduced to its own, reporting how (`reduced_by`). Clamping and pooling are the host's ([macaw_data 01 §6](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-budgets)); the budget is the component's.
 - **The budget holds in every mode** (macaw_compose#29), evaluated at that mode's size, never the viewer's window (02 §5).
+
+- **A slot may ask for a row order,** through the optional `order(slot, settings)` callback: `[{field, :asc | :desc}, …]`, each field once, the first key deciding first ([macaw_data 01 §2.3](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-request)), from its settings (a table's sort column). `Macaw.Component.order/3` asks it, `[]` without the callback, a malformed answer a `bad_order` error. The host puts the order in the slot's request, so a delivery capped at the budget holds **the first rows in that order**, not a sorted sample, and pools only slots that ask for the same order. The kit checks every fixture's slots' orders.
+
+```test:order-answers
+a slot's order is reached through order/3, [] without order/2; an answer that is no order (a field twice, a bad direction, not a list) is a bad_order error; the kit reports a fixture's bad order
+```
 
 ```test:budget-answers
 a component's budget is reached through budget/4 for each slot and size, nil without budget/3, and an answer that is not a positive integer or nil is a bad_budget error

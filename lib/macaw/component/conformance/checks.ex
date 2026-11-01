@@ -134,6 +134,14 @@ if Code.ensure_loaded?(LazyHTML) do
           do: {{fixture.name, nil, nil}, {:bad_budget, slot, size, answer}}
     end
 
+    defp what(:order, module, opts) do
+      for fixture <- Keyword.fetch!(opts, :fixtures),
+          {:ok, settings, declarations} <- [Render.setup(module, fixture)],
+          slot <- Map.keys(declarations.slots),
+          {:error, {:bad_order, answer}} <- [Component.order(module, slot, settings)],
+          do: {{fixture.name, nil, nil}, {:bad_order, slot, answer}}
+    end
+
     defp what(:contained, module, opts) do
       {:ok, info} = Component.info(module)
 

@@ -141,6 +141,18 @@ defmodule Macaw.Component.ContractTest do
     end
   end
 
+  @tag verifies: "order-answers"
+  test "order/3 reaches order/2, answers [] without it, and refuses an answer of no order's shape" do
+    good = [{"p50", :desc}, {:host, :asc}]
+    assert Component.order(Answers, "s", %{"answer" => good}) == {:ok, good}
+    assert Component.order(Answers, "s", %{"answer" => []}) == {:ok, []}
+    assert Component.order(Fixed, "items", %{}) == {:ok, []}
+
+    for bad <- [nil, :asc, [{"p50", :down}], [{"p50", :asc}, {:p50, :desc}], [{1, :asc}], ["p50"]] do
+      assert Component.order(Answers, "s", %{"answer" => bad}) == {:error, {:bad_order, bad}}
+    end
+  end
+
   @tag verifies: "behavior-declarations"
   test "declarations/2 validates settings first, builds the answer, and refuses a bad shape" do
     assert {:ok, %Component.Declarations{events: ["open"], reading: :scan}} =

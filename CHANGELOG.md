@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.0 (2026-11-01)
+
+**On macaw_layers 0.4 and macaw_data 0.9, and a slot may ask for a row order** (#11, macaw#241). This release is breaking for an adopter pinning macaw_layers `~> 0.3` or macaw_data `~> 0.7`: follow their upgrade notes (macaw_layers 0.4.0's `Form.read/3` refuses every URL without `urls:`, and a theme refuses untrusted text; macaw_data 0.8.0's tables are chunked and opaque, 0.9.0's request carries an order). macaw_component's own API only grows.
+
+- **Breaking:** on `macaw_layers ~> 0.4.0` and `macaw_data ~> 0.9.0` (were `~> 0.3.0` and `~> 0.7.0`).
+- **New:** an optional callback `order(slot, settings)`, the row order a slot asks its source for, and `Macaw.Component.order/3`, `[]` without it and `{:error, {:bad_order, answer}}` for an answer of no order's shape; the conformance kit checks it (spec/01 §1.4).
+
 ## v0.2.2 (2026-11-01)
 
 - `Slot.check/3` refuses a field a `many` role lists twice, `{:duplicate, field}` at `[role]`: a table showed the column twice, a chart would draw the series twice (#10, macaw#237).

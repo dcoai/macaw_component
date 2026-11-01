@@ -60,6 +60,7 @@ defmodule Macaw.Component.ConformanceTest do
                :ids,
                :drawn,
                :budget,
+               :order,
                :contained,
                :bindings
              ]
@@ -226,6 +227,11 @@ defmodule Macaw.Component.ConformanceTest do
     findings = broken("bad_budget", :budget)
     assert length(findings) == 3
     assert {:bad_budget, "rows", {320, 200}, 0} in whats(findings)
+
+    assert whats(broken("bad_order", :order)) ==
+             [{:bad_order, "rows", [{"p50", :down}, {"p50", :asc}]}]
+
+    assert broken("bad_budget", :order) == []
 
     assert Conformance.check(:contained, Broken, now: @now) == []
     assert Conformance.check(:contained, Honest.Scene, now: @now) == []

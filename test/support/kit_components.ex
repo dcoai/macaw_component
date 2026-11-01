@@ -168,7 +168,7 @@ defmodule Macaw.Component.Test.Broken do
             style_element inline_script onclick javascript_url foreign_img foreign_srcset
             fixed_heading top_h3 img_no_alt unnamed_button bad_state dangling_reference
             unnamed_svg positive_tabindex composite_two_stops literal_fill bad_cue
-            duplicate_id unstable_id unprefixed_id blank_drawn bad_budget)
+            duplicate_id unstable_id unprefixed_id blank_drawn bad_budget bad_order)
 
   def flaws, do: @flaws
 
@@ -183,12 +183,19 @@ defmodule Macaw.Component.Test.Broken do
   @impl true
   def declarations(%{"flaw" => "impure"}), do: {:ok, events: ["e#{System.unique_integer()}"]}
   def declarations(%{"flaw" => "reads_bindable", "mood" => mood}), do: {:ok, events: [mood]}
-  def declarations(%{"flaw" => "bad_budget"}), do: {:ok, slots: %{"rows" => %{}}}
+
+  def declarations(%{"flaw" => flaw}) when flaw in ["bad_budget", "bad_order"],
+    do: {:ok, slots: %{"rows" => %{}}}
+
   def declarations(_settings), do: {:ok, []}
 
   @impl true
   def budget(_slot, %{"flaw" => "bad_budget"}, _size), do: 0
   def budget(_slot, _settings, _size), do: 10
+
+  @impl true
+  def order(_slot, %{"flaw" => "bad_order"}), do: [{"p50", :down}, {"p50", :asc}]
+  def order(_slot, _settings), do: [{"p50", :desc}]
 
   @impl true
   def render(kind, %{settings: %{"flaw" => flaw}, drawn: drawn, context: ctx} = assigns) do
@@ -247,7 +254,7 @@ defmodule Macaw.Component.Test.Broken do
   defp extra("none", _ctx), do: ""
 
   defp extra(flaw, _ctx)
-       when flaw in ~w(impure reads_bindable no_nav unnamed_nav menu_role no_control no_container bad_budget blank_drawn top_h3),
+       when flaw in ~w(impure reads_bindable no_nav unnamed_nav menu_role no_control no_container bad_budget bad_order blank_drawn top_h3),
        do: ""
 
   defp extra("canvas", _ctx), do: "<canvas></canvas>"

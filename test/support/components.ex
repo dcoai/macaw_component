@@ -100,6 +100,9 @@ defmodule Macaw.Component.Test.Answers do
   def budget(_slot, %{"answer" => answer}, _size), do: answer
 
   @impl true
+  def order(_slot, %{"answer" => answer}), do: answer
+
+  @impl true
   def render(:content, _assigns), do: {:safe, ""}
 end
 

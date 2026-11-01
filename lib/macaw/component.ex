@@ -56,12 +56,13 @@ defmodule Macaw.Component do
   @callback render(kind(), assigns :: map()) :: Phoenix.HTML.Safe.t()
   @callback budget(slot :: String.t(), settings :: map(), size :: {number(), number()}) ::
               pos_integer() | nil
+  @callback order(slot :: String.t(), settings :: map()) :: Macaw.Data.Source.Order.t()
   @callback init(settings :: map(), Macaw.Component.Context.t()) :: value()
   @callback delivery(value(), slot :: String.t(), Macaw.Data.Delivery.t()) :: value()
   @callback size(value(), {number(), number()}) :: value()
   @callback bound(value(), name :: String.t(), new :: term()) :: value()
 
-  @optional_callbacks budget: 3, init: 2, delivery: 3, size: 2, bound: 3
+  @optional_callbacks budget: 3, order: 2, init: 2, delivery: 3, size: 2, bound: 3
 
   defmacro __using__(opts) do
     info = Macaw.Component.Compile.options!(opts, __CALLER__)
@@ -195,6 +196,29 @@ defmodule Macaw.Component do
       end
     else
       {:ok, nil}
+    end
+  end
+
+  @doc """
+  The row order a slot asks its source for (spec/01 §1.4): `{:ok, []}` for a component
+  without `order/2`, else `{:ok, order}` for an order of `Macaw.Data.Source.Order`'s shape
+  (`[{field, :asc | :desc}, …]`, each field once), and `{:error, {:bad_order, answer}}`
+  otherwise. The host puts it in the slot's request, so a capped delivery holds the first
+  rows in it.
+  """
+  @spec order(module(), String.t(), map()) ::
+          {:ok, Macaw.Data.Source.Order.t()} | {:error, {:bad_order, term()}}
+  def order(module, slot, settings) when is_binary(slot) do
+    Code.ensure_loaded(module)
+
+    if function_exported?(module, :order, 2) do
+      answer = module.order(slot, settings)
+
+      if is_list(answer) and Macaw.Data.Source.Order.shape(answer) == [],
+        do: {:ok, answer},
+        else: {:error, {:bad_order, answer}}
+    else
+      {:ok, []}
     end
   end
 
