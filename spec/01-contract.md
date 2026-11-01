@@ -157,6 +157,7 @@ A slot's `doc` is optional; a slot with no roles reads whole rows (a table showi
 - `{:missing, field}`: no such field in the schema, compared by either spelling;
 - `{:type, wanted, got}`, `:not_window`, `:not_identity`, `{:quantity, wanted, got}`: the field fails a requirement;
 - `:many`: a list given for a role that takes one field, or an empty list;
+- `{:duplicate, field}`: a `many` role listing a field twice, by either spelling, once for each field repeated: no role reads one field twice (a table's column, a chart's series);
 - `:unknown_role`: a role the slot doesn't require.
 
 **Resolving a binding for render.** `Macaw.Component.Slot.resolve(slot, schema, fields)` answers, for fields `check/3` passes, the map a host puts in the context's `bindings` ([02 §2](02-rendering.md#components-context)): each bound role mapped to its field as a string, or for a `many` role the list of its fields. A `window` role left unbound holds the schema's window field, by the same rule as `check/3`; an optional role left unbound is absent. It is the one source of the defaulting rule, so the core and every adopter resolve a binding the same way. Fields `check/3` refuses raise `ArgumentError`.

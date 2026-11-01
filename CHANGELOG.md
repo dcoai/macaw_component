@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.2 (2026-11-01)
+
+- `Slot.check/3` refuses a field a `many` role lists twice, `{:duplicate, field}` at `[role]`: a table showed the column twice, a chart would draw the series twice (#10, macaw#237).
+
 ## v0.2.1 (2026-10-31)
 
 - The drawn states' notices have a static stylesheet, `priv/static/macaw_component/drawn.css` (`Drawn.stylesheet_path/0`, served at `Drawn.stylesheet_url/0`): a rule for every class a notice emits, every color a theme custom property with the default theme's fallback, and the glyph kept visible in forced-colors mode (#6, macaw#196, spec/02 §6).

@@ -128,9 +128,15 @@ defmodule Macaw.Component.Slot do
     faults =
       Enum.flat_map(requires, fn {role, req} ->
         case bound(req, schema, Map.fetch(fields, role)) do
-          :unbound -> if req.optional, do: [], else: [{[role], :unbound}]
-          {:ok, names} -> for reason <- field_faults(req, schema, names), do: {[role], reason}
-          {:error, reason} -> [{[role], reason}]
+          :unbound ->
+            if req.optional, do: [], else: [{[role], :unbound}]
+
+          {:ok, names} ->
+            for reason <- field_faults(req, schema, names) ++ repeated(names),
+                do: {[role], reason}
+
+          {:error, reason} ->
+            [{[role], reason}]
         end
       end)
 
@@ -167,6 +173,13 @@ defmodule Macaw.Component.Slot do
               "the binding does not pass Slot.check/3, so it does not resolve: " <>
                 inspect(faults)
     end
+  end
+
+  # A field a `many` role lists twice, by either spelling, is `{:duplicate, field}`, once
+  # for each field repeated: no role reads one field twice.
+  defp repeated(names) do
+    spelled = Enum.map(names, &to_string/1)
+    for name <- Enum.uniq(spelled -- Enum.uniq(spelled)), do: {:duplicate, name}
   end
 
   defp resolved(%{many: true}, names), do: names

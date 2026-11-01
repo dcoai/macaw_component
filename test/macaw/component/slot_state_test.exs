@@ -109,6 +109,26 @@ defmodule Macaw.Component.SlotStateTest do
   end
 
   @tag verifies: "slots-check"
+  test "a many role listing a field twice, by either spelling, is a duplicate, once per field" do
+    s = slot(%{"y" => %{type: :number, many: true}, "who" => %{type: :category}})
+
+    assert Slot.check(s, @schema, %{
+             "y" => ["latency", :latency, "latency", "lost", "lost"],
+             "who" => "host"
+           }) ==
+             {:error,
+              [
+                {["y"], {:missing, "lost"}},
+                {["y"], {:missing, "lost"}},
+                {["y"], {:duplicate, "latency"}},
+                {["y"], {:duplicate, "lost"}}
+              ]}
+
+    # Distinct fields pass, and a one-field role is never a duplicate.
+    assert Slot.check(s, @schema, %{"y" => ["latency"], "who" => "host"}) == :ok
+  end
+
+  @tag verifies: "slots-check"
   test "every fault of a bad binding at its role, at once, by either spelling" do
     s =
       slot(%{
