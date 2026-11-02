@@ -8,7 +8,7 @@ defmodule Macaw.Component.ConformanceTest do
   alias Macaw.Data.Delivery
 
   @now ~U[2026-10-28 12:00:00Z]
-  @sections Delivery.new([%{title: "One"}, %{title: "Two"}])
+  @sections Delivery.new!([%{title: "One"}, %{title: "Two"}])
   @prose [fixtures: [%{deliveries: %{"sections" => @sections}, events: ["open"]}], now: @now]
 
   @honest [
@@ -20,7 +20,7 @@ defmodule Macaw.Component.ConformanceTest do
     {Honest.Scene, [now: @now, fixtures: [%{deliveries: %{"frames" => @sections}}]]}
   ]
 
-  @points Delivery.new([%{name: "a", v: 1, w: 2}, %{name: "b", v: 3, w: nil}])
+  @points Delivery.new!([%{name: "a", v: 1, w: 2}, %{name: "b", v: 3, w: nil}])
   @bound [
     fixtures: [
       %{
@@ -308,9 +308,9 @@ defmodule Macaw.Component.ConformanceTest do
 
     # Rows keyed by string, tuple rows with names and types, and a column map rename too.
     for points <- [
-          Delivery.new([%{"name" => "a", "v" => 1, "w" => 2}]),
-          Delivery.new([{"a", 1, 2}, {"b", 3, 4}], names: [:name, :v, :w], types: %{v: :number}),
-          Delivery.new(%{name: ["a", "b"], v: [1, 2], w: [3, 4]})
+          Delivery.new!([%{"name" => "a", "v" => 1, "w" => 2}]),
+          Delivery.new!([{"a", 1, 2}, {"b", 3, 4}], names: [:name, :v, :w], types: %{v: :number}),
+          Delivery.new!(%{name: ["a", "b"], v: [1, 2], w: [3, 4]})
         ] do
       opts = put_in(@bound, [:fixtures, Access.at(0), :deliveries, "points"], points)
       assert Conformance.check(:bindings, Honest.Bound, opts) == [], inspect(points)
@@ -318,6 +318,17 @@ defmodule Macaw.Component.ConformanceTest do
       assert Conformance.check(:bindings, Broken.Bound, opts) ==
                [bindings: {{"fixture 1", :content, :live}, {:ignores_binding, "points"}}]
     end
+
+    # A hand-built delivery that can't be rebuilt with its fields renamed is a finding of its
+    # own, its faults Delivery.new/2's, never a raise.
+    bad = %{Delivery.new!([%{"name" => "a", "v" => 1, "w" => 2}]) | schema: 7}
+    opts = put_in(@bound, [:fixtures, Access.at(0), :deliveries, "points"], bad)
+
+    assert [bindings: {{"fixture 1", nil, nil}, {:unrenamable, "points", [_ | _]} = what}] =
+             Conformance.check(:bindings, Honest.Bound, opts)
+
+    assert Conformance.format({:bindings, {{"fixture 1", nil, nil}, what}}) =~
+             ~s(can't be rebuilt with its fields renamed)
 
     [finding] = Conformance.check(:bindings, Broken.Bound, @bound)
     assert finding == {:bindings, {{"fixture 1", :content, :live}, {:ignores_binding, "points"}}}

@@ -154,6 +154,10 @@ if Code.ensure_loaded?(LazyHTML) do
     defp words({:bad_budget, slot, size, answer}),
       do: "budget for #{inspect(slot)} at #{inspect(size)} answered #{inspect(answer)}"
 
+    defp words({:unrenamable, slot, faults}),
+      do:
+        "the delivery for #{inspect(slot)} can't be rebuilt with its fields renamed: #{inspect(faults)}"
+
     defp words({:ignores_binding, slot}),
       do: "does not read the fields bound in #{inspect(slot)} from the context's bindings"
 

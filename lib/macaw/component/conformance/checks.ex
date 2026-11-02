@@ -164,11 +164,24 @@ if Code.ensure_loaded?(LazyHTML) do
           %Context{} <- [Render.context(opts, fixture)],
           tokens = binding_tokens(fixture.bindings),
           {slot, roles} <- Enum.sort(fixture.bindings),
-          renamed = renamed(fixture, slot, roles, tokens),
-          kind <- info.kinds,
-          given = live(module, kind, fixture, settings, declarations, opts, %{}),
-          given != live(module, kind, renamed, settings, declarations, opts, tokens),
-          do: {{fixture.name, kind, :live}, {:ignores_binding, slot}}
+          finding <-
+            bound(module, info, {fixture, settings, declarations}, slot, roles, tokens, opts),
+          do: finding
+    end
+
+    # A slot's renamed fixture renders as the fixture does, in every kind; a delivery the
+    # renames can't be built from is a finding of its own, its faults the delivery's.
+    defp bound(module, info, {fixture, settings, declarations}, slot, roles, tokens, opts) do
+      case renamed(fixture, slot, roles, tokens) do
+        {:ok, renamed} ->
+          for kind <- info.kinds,
+              given = live(module, kind, fixture, settings, declarations, opts, %{}),
+              given != live(module, kind, renamed, settings, declarations, opts, tokens),
+              do: {{fixture.name, kind, :live}, {:ignores_binding, slot}}
+
+        {:error, faults} ->
+          [{{fixture.name, nil, nil}, {:unrenamable, slot, faults}}]
+      end
     end
 
     # -- declarations ---------------------------------------------------------------------
@@ -527,7 +540,7 @@ if Code.ensure_loaded?(LazyHTML) do
     end
 
     # The fixture with the fields bound in `slot` renamed to their tokens, in its delivery
-    # and in its bindings.
+    # and in its bindings: `{:ok, fixture}`, or the faults of the delivery it can't build.
     defp renamed(fixture, slot, roles, tokens) do
       fields = roles |> Map.values() |> List.flatten()
       renames = Map.take(tokens, fields)
@@ -538,18 +551,31 @@ if Code.ensure_loaded?(LazyHTML) do
           {role, field} -> {role, Map.fetch!(renames, field)}
         end)
 
-      deliveries =
-        Map.new(fixture.deliveries, fn
-          {^slot, delivery} -> {slot, rename(delivery, renames)}
-          other -> other
-        end)
+      with {:ok, deliveries} <- rename_slot(fixture.deliveries, slot, renames),
+           do:
+             {:ok,
+              %{
+                fixture
+                | deliveries: deliveries,
+                  bindings: Map.put(fixture.bindings, slot, roles)
+              }}
+    end
 
-      %{fixture | deliveries: deliveries, bindings: Map.put(fixture.bindings, slot, roles)}
+    defp rename_slot(deliveries, slot, renames) do
+      case Map.fetch(deliveries, slot) do
+        {:ok, delivery} ->
+          with {:ok, renamed} <- rename(delivery, renames),
+               do: {:ok, Map.put(deliveries, slot, renamed)}
+
+        :error ->
+          {:ok, deliveries}
+      end
     end
 
     # A delivery with its fields renamed: tuple rows' names, else the rows' keys, and the
-    # types' keys. Rows that are a table or another struct are read as row maps; rows read
-    # by position only (a tensor or tuple rows, without names) have no names to rename.
+    # types' keys, as `Delivery.new/2` answers it. Rows that are a table or another struct
+    # are read as row maps; rows read by position only (a tensor or tuple rows, without
+    # names) have no names to rename.
     defp rename(%Delivery{} = delivery, renames) do
       {rows, names} =
         case delivery.names do

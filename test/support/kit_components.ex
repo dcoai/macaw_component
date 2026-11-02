@@ -411,7 +411,7 @@ defmodule Macaw.Component.Test.Honest.Bound do
       Context.field(ctx, "points", "label") | Context.field(ctx, "points", "values")
     ]
 
-    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows()
+    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows!()
 
     Kit.drawn_or(
       assigns,
@@ -447,7 +447,7 @@ defmodule Macaw.Component.Test.Broken.Bound do
   @impl true
   def render(:content, %{drawn: :live, context: ctx, deliveries: deliveries} = assigns) do
     label = Context.field(ctx, "points", "label")
-    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows()
+    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows!()
 
     Kit.drawn_or(
       assigns,

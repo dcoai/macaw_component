@@ -10,8 +10,8 @@ defmodule Macaw.Component.VisualTest do
 
   defp fixtures(settings \\ %{}) do
     [
-      %{settings: settings, deliveries: %{"points" => Delivery.new([%{v: 3}, %{v: 7}])}},
-      %{settings: settings, deliveries: %{"points" => Delivery.new([%{v: 5}])}}
+      %{settings: settings, deliveries: %{"points" => Delivery.new!([%{v: 3}, %{v: 7}])}},
+      %{settings: settings, deliveries: %{"points" => Delivery.new!([%{v: 5}])}}
     ]
   end
 

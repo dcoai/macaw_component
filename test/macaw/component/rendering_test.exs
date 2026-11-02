@@ -331,7 +331,7 @@ defmodule Macaw.Component.RenderingTest do
 
   @tag verifies: "contained-transitions"
   test "a contained value moves through its transitions; the dispatchers refuse a pure component" do
-    delivery = Delivery.new([%{t: 1}])
+    delivery = Delivery.new!([%{t: 1}])
     value = Component.init(Scene, %{"zoom" => 1}, context())
     assert value.instance == "c1"
     value = Component.delivery(Scene, value, "frames", delivery)

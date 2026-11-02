@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.0 (2026-11-02)
+
+**On macaw_data 0.10** (#15, #14). macaw_data 0.10.0 answers errors as values: `Delivery.new/2` answers `{:ok, delivery}` or `{:error, faults}`, with `new!/2` its raising twin, and so do `Finish`, `Order.sort/3` and others (see its "Upgrading from 0.9.x"). This release is breaking for an adopter pinning macaw_data `~> 0.9`; macaw_component's own API is unchanged.
+
+- **Breaking:** on `macaw_data ~> 0.10.0` (was `~> 0.9.0`).
+- The conformance kit's `:bindings` check rebuilds a fixture's renamed delivery through `Delivery.new/2`'s value: one it can't rebuild is the finding `{:unrenamable, slot, faults}`, never a raise (spec/04).
+
 ## v0.3.0 (2026-11-01)
 
 **On macaw_layers 0.4 and macaw_data 0.9, and a slot may ask for a row order** (#11, macaw#241). This release is breaking for an adopter pinning macaw_layers `~> 0.3` or macaw_data `~> 0.7`: follow their upgrade notes (macaw_layers 0.4.0's `Form.read/3` refuses every URL without `urls:`, and a theme refuses untrusted text; macaw_data 0.8.0's tables are chunked and opaque, 0.9.0's request carries an order). macaw_component's own API only grows.
