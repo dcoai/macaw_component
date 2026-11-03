@@ -51,7 +51,7 @@ defmodule Macaw.Component.MixProject do
       # Themes, their roles and cues (spec/00 §2).
       {:macaw_layers, "~> 0.4.0"},
       # Parameters, schemas, deliveries and the interaction event (spec/00 §2).
-      {:macaw_data, "~> 0.10.0"},
+      {:macaw_data, "~> 0.11.0"},
       # The safe-markup protocol a render answers in (spec/00 §2); not Phoenix, not LiveView.
       {:phoenix_html, "~> 4.1"},
       # The conformance kit reads renders with it, and compiles only when it is present.

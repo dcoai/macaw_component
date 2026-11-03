@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** on `macaw_data ~> 0.11.0` (was `~> 0.10.0`) (#17, #16). macaw_data 0.11 answers `Window.position/1` in integer Unix µs for every kind of time, compares windows of mixed kinds by instant (`{:window, :mixed}` is gone) and reduces a Date or NaiveDateTime series as a UTC one; macaw_component calls none of these, and its behavior is unchanged. An application on macaw_data 0.10 follows its "Upgrading from 0.10.x".
+
 ## v0.4.0 (2026-11-02)
 
 **On macaw_data 0.10** (#15, #14). macaw_data 0.10.0 answers errors as values: `Delivery.new/2` answers `{:ok, delivery}` or `{:error, faults}`, with `new!/2` its raising twin, and so do `Finish`, `Order.sort/3` and others (see its "Upgrading from 0.9.x"). This release is breaking for an adopter pinning macaw_data `~> 0.9`; macaw_component's own API is unchanged.
