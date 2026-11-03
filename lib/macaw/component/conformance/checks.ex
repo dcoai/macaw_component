@@ -1,7 +1,7 @@
 if Code.ensure_loaded?(LazyHTML) do
   defmodule Macaw.Component.Conformance.Checks do
     @moduledoc false
-    # The thirteen checks of spec/04 §2, each answering findings `{check, {where, what}}`:
+    # The checks of spec/04 §2, `Conformance.checks/0`, each answering findings `{check, {where, what}}`:
     # `where` the fixture's name, and the kind and mode a render was made in, and `what`
     # the rule broken.
 

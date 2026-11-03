@@ -28,7 +28,7 @@ use writes one test per check into a describe block, refuses a missing component
 
 ## 2. The checks {#components-kit-checks}
 
-`checks/0` is these thirteen, in order:
+`checks/0` is these, in order, a doctest holding the list (#13):
 
 | Check | Holds |
 |---|---|
@@ -43,6 +43,7 @@ use writes one test per check into a describe block, refuses a missing component
 | `:ids` | ids are unique within a render, the same in two renders of one assigns, every one starts with the instance's id, and two instances' renders share none |
 | `:drawn` | each of the eight drawn states, assigned in turn, renders in each mode with text a person reads (text content, or a named `role="img"`); never blank |
 | `:budget` | `budget/4` answers `{:ok, _}` for each slot of each fixture at `{320, 200}`, `{640, 400}` and `{1280, 800}` |
+| `:order` | for each slot of each fixture, `Macaw.Component.order/3` answers `{:ok, order}`, an order of `Macaw.Data.Source.Order`'s shape (01 §1.4); one that is no order is `{:bad_order, slot, answer}` |
 | `:contained` | for a `:contained` component: `init`, `delivery` for each delivered slot, `size`, and `bound` for each bindable parameter at its default, each answering a value that renders; equal inputs give equal values. A `:pure` component passes with no finding |
 | `:bindings` | for each fixture with bindings, each kind, in live mode: the component reads each slot's fields from the context's bindings (02 §2). The kit renders once as given, then again with the fields bound in one slot renamed to fresh tokens (`mwbound0`, `mwbound1`, …) in that slot's delivery (row-map keys by either spelling, or `names:` for tuple rows, and `types:`) and in the context's bindings, a `:contained` component's value rebuilt from the renamed deliveries. Each token is mapped back to its field in the second render's markup, so a component that labels a header or an axis by field name still passes, and drawn-token values are not compared. The two must read the same, else `{:ignores_binding, slot}`. A delivery that can't be rebuilt with its fields renamed (a hand-built `%Delivery{}` `Delivery.new/2` refuses) is `{:unrenamable, slot, faults}`, its faults `Delivery.new/2`'s, never a raise. A fixture without bindings is not probed |
 
@@ -79,7 +80,7 @@ the kit runs every fixture and names a finding by its fixture; defaults fill a b
 
 ## 4. Check sets {#components-kit-sets}
 
-A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after the thirteen, for each fixture, and their findings are shaped like any other's.
+A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after `checks/0`'s, for each fixture, and their findings are shaped like any other's.
 
 **The visual check set**, `:visual`, for components that draw data (visualize's visuals):
 

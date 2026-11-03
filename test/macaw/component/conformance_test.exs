@@ -4,6 +4,8 @@ defmodule Macaw.Component.ConformanceTest do
   use ExUnit.Case, async: true
 
   alias Macaw.Component.Conformance
+
+  doctest Conformance
   alias Macaw.Component.Test.{Broken, Honest}
   alias Macaw.Data.Delivery
 

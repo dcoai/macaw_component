@@ -48,7 +48,14 @@ if Code.ensure_loaded?(LazyHTML) do
     @typedoc "A finding: the check, then where (the fixture, kind and mode) and what failed."
     @type finding :: {atom(), {{String.t(), atom() | nil, atom() | nil}, term()}}
 
-    @doc "The thirteen checks, in order."
+    @doc """
+    The checks of spec/04 §2, in order. The list is the count: a check added here is a
+    row added to the spec's table and a line added below (#13).
+
+        iex> Macaw.Component.Conformance.checks()
+        [:declarations, :kinds, :modes, :delivery, :headings, :names, :keyboard, :colors, :ids,
+         :drawn, :budget, :order, :contained, :bindings]
+    """
     @spec checks() :: [atom(), ...]
     def checks, do: @checks
 

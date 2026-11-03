@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.5.0 (2026-11-03)
+
+**On macaw_data 0.11** (#17, #16). This release is breaking only for an adopter pinning macaw_data `~> 0.10`: follow macaw_data's "Upgrading from 0.10.x". macaw_component's own API is unchanged.
 
 - **Breaking:** on `macaw_data ~> 0.11.0` (was `~> 0.10.0`) (#17, #16). macaw_data 0.11 answers `Window.position/1` in integer Unix µs for every kind of time, compares windows of mixed kinds by instant (`{:window, :mixed}` is gone) and reduces a Date or NaiveDateTime series as a UTC one; macaw_component calls none of these, and its behavior is unchanged. An application on macaw_data 0.10 follows its "Upgrading from 0.10.x".
+- The kit's checks are stated from `Conformance.checks/0` rather than as a count: its doc, the README and spec 04 §2 said thirteen after 0.3.0 added `:order`, the fourteenth, and spec 04's table now has the `:order` row. A doctest holds the list (#18, #13).
 
 ## v0.4.0 (2026-11-02)
 
