@@ -48,7 +48,7 @@ end
 @callback budget(slot :: String.t(), settings :: map(), size :: {number(), number()}) ::
             pos_integer() | nil                                       # optional, §1.4
 @callback order(slot :: String.t(), settings :: map()) ::
-            Macaw.Data.Source.Order.t()                               # optional, §1.4
+            Macaw.Component.order()                                   # optional, §1.4
 # a :contained component's transitions, §7 of 02:
 @callback init(settings :: map(), Macaw.Component.Context.t()) :: value
 @callback delivery(value, slot :: String.t(), Macaw.Data.Delivery.t()) :: value
@@ -65,7 +65,8 @@ end
 - **`settings/2`**: given settings checked against the parameters by `Macaw.Data.Parameter.validate/2`, defaults filled in: `{:ok, settings}` or `{:error, faults}`.
 - **`declarations/2`**: settings validated by `settings/2` first, then `declarations/1` called and its answer built by `Macaw.Component.Declarations.new/2` (§1.2): `{:ok, %Declarations{}}` or `{:error, faults}`. An answer of neither shape is `{:error, [{[], {:bad_declarations, answer}}]}`.
 - **`budget/4`**: `{:ok, nil}` for a component without `budget/3`; otherwise `{:ok, rows}` for a positive integer or `nil`, and `{:error, {:bad_budget, answer}}` for anything else.
-- **`order/3`**: `{:ok, []}` for a component without `order/2`; otherwise `{:ok, order}` for an order of `Macaw.Data.Source.Order`'s shape, and `{:error, {:bad_order, answer}}` for anything else (§1.4).
+- **`order/3`**: `{:ok, []}` for a component without `order/2`; otherwise `{:ok, order}` for an order whose field keys are of `Macaw.Data.Source.Order`'s shape and whose role keys pass the slot's declarations, and `{:error, {:bad_order, answer}}` for anything else (§1.4).
+- **`resolve_order/4`**: the same order in fields for a slot's resolved bindings, the one a request takes: `{:ok, order}` or `{:error, {:bad_order, answer}}` (§1.4).
 
 **Faults** are `{path, reason}` pairs, the path a list of keys from the declaration's root, every fault at once, ordered by path (as in [macaw_data 01 §1.8](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-schema-faults)). `Macaw.Component.format_fault/1` words one as a line a person reads.
 
@@ -188,10 +189,35 @@ A component that draws rows declares, for each slot, a **row budget** as a funct
 - **Sources are pooled at the largest budget** among their readers, and each reader is reduced to its own, reporting how (`reduced_by`). Clamping and pooling are the host's ([macaw_data 01 §6](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-budgets)); the budget is the component's.
 - **The budget holds in every mode** (macaw_compose#29), evaluated at that mode's size, never the viewer's window (02 §5).
 
-- **A slot may ask for a row order,** through the optional `order(slot, settings)` callback: `[{field, :asc | :desc}, …]`, each field once, the first key deciding first ([macaw_data 01 §2.3](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-request)), from its settings (a table's sort column). `Macaw.Component.order/3` asks it, `[]` without the callback, a malformed answer a `bad_order` error. The host puts the order in the slot's request, so a delivery capped at the budget holds **the first rows in that order**, not a sorted sample, and pools only slots that ask for the same order. The kit checks every fixture's slots' orders.
+- **A slot may ask for a row order,** through the optional `order(slot, settings)` callback: `[{field, :asc | :desc}, …]`, each field once, the first key deciding first ([macaw_data 01 §2.3](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-request)), from its settings (a table's sort column). `Macaw.Component.order/3` asks it, `[]` without the callback, a malformed answer a `bad_order` error. The host puts the order, resolved as below, in the slot's request, so a delivery capped at the budget holds **the first rows in that order**, not a sorted sample, and pools only slots that ask for the same order. The kit checks every fixture's slots' orders.
+
+**An order key may name a role.** A component reads its fields through roles, so a key's field may be `{:role, name}`, a role of the slot: `[{{:role, "t"}, :desc}]` asks for the newest rows first, whichever field a document binds to `t`. `order/2` stays pure in its settings: the bindings never reach the callback, so an order can't depend on a document's field names, and a field key works as before, alone or beside a role key.
+
+`Macaw.Component.order/3` checks role keys against the slot in the configured declarations for those settings (`declarations/2`, so bindable parameters at their defaults, §1.1). Each of these is `{:error, {:bad_order, answer}}`, as is any other malformed answer:
+- a role the slot doesn't declare, a slot the component doesn't declare, or settings that build no declarations;
+- a role named by two keys;
+- a `many` role, which holds no one field to sort by;
+- a role any of whose types has no order (`:point`, `:color`, [macaw_data 01 §2.3](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-request)), so that no binding `Slot.check/3` passes can fail the order against its schema.
+
+**A host resolves an order before it builds a request.** `Macaw.Data.Source.Order` has no roles and doesn't learn them: a request's order is fields. `Macaw.Component.resolve_order(module, slot, settings, bindings)` answers `{:ok, order}`, an order of that shape, where `bindings` is the slot's resolved binding, `Slot.resolve/3`'s answer (§1.3):
+- a role key takes the field the role is bound to, so a `window` role left unbound reads the schema's window field, by `Slot.resolve/3`'s rule;
+- an optional role left unbound drops its key;
+- a required role absent from `bindings`, or holding anything but one field's name, is `{:error, {:bad_order, answer}}`: bindings that are no slot's resolved binding are refused, never read as an order of fewer keys;
+- a key on a field an earlier key already names is dropped, by either spelling. Two roles may bind one field (§1.3), and the later key could never decide anything, so a binding that passes is never refused for it;
+- field keys are kept as given, and an order with no role key is `order/3`'s answer whatever `bindings` holds.
+
+Sources pool on the resolved order, so two cells whose roles bind one field share a request. `budget/3` doesn't see bindings: when a key drops, the budget still caps the rows, in the source's own order.
 
 ```test:order-answers
-a slot's order is reached through order/3, [] without order/2; an answer that is no order (a field twice, a bad direction, not a list) is a bad_order error; the kit reports a fixture's bad order
+a slot's order is reached through order/3, [] without order/2; an answer that is no order (a field twice, a bad direction, not a list, an improper list) is a bad_order error; the kit reports a fixture's bad order
+```
+
+```test:order-roles
+order/3 answers a role key and a field key as given; an undeclared role, an undeclared slot, a role named twice, a many role, a role with an unordered type, and a role key with a bad direction or name are each a bad_order error; a field-keyed order doesn't ask for declarations
+```
+
+```test:order-resolve
+resolve_order/4 answers a role key's bound field in place, beside a field key; an unbound window role reads the window field through Slot.resolve/3; an unbound optional role drops its key; a required role absent, or a list for a role, is a bad_order error; a later key on a field already named is dropped by either spelling; a field-keyed order is unchanged; order/3's refusals pass through; what it answers passes Order.shape/1 and Order.faults/2
 ```
 
 ```test:budget-answers

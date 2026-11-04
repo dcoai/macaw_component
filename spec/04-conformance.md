@@ -43,7 +43,7 @@ use writes one test per check into a describe block, refuses a missing component
 | `:ids` | ids are unique within a render, the same in two renders of one assigns, every one starts with the instance's id, and two instances' renders share none |
 | `:drawn` | each of the eight drawn states, assigned in turn, renders in each mode with text a person reads (text content, or a named `role="img"`); never blank |
 | `:budget` | `budget/4` answers `{:ok, _}` for each slot of each fixture at `{320, 200}`, `{640, 400}` and `{1280, 800}` |
-| `:order` | for each slot of each fixture, `Macaw.Component.order/3` answers `{:ok, order}`, an order of `Macaw.Data.Source.Order`'s shape (01 §1.4); one that is no order is `{:bad_order, slot, answer}` |
+| `:order` | for each slot of each fixture, `Macaw.Component.order/3` answers `{:ok, order}` (01 §1.4); one that is no order, or whose role keys the slot's declarations refuse, is `{:bad_order, slot, answer}`. For a fixture that binds the slot, `Macaw.Component.resolve_order/4` of its bindings answers too, else `{:unresolved_order, slot, answer}`: a required role the fixture's binding lacks, so a fixture's `bindings` are resolved ones, a `window` role's field included. A fixture without bindings for the slot is not resolved |
 | `:contained` | for a `:contained` component: `init`, `delivery` for each delivered slot, `size`, and `bound` for each bindable parameter at its default, each answering a value that renders; equal inputs give equal values. A `:pure` component passes with no finding |
 | `:bindings` | for each fixture with bindings, each kind, in live mode: the component reads each slot's fields from the context's bindings (02 §2). The kit renders once as given, then again with the fields bound in one slot renamed to fresh tokens (`mwbound0`, `mwbound1`, …) in that slot's delivery (row-map keys by either spelling, or `names:` for tuple rows, and `types:`) and in the context's bindings, a `:contained` component's value rebuilt from the renamed deliveries. Each token is mapped back to its field in the second render's markup, so a component that labels a header or an axis by field name still passes, and drawn-token values are not compared. The two must read the same, else `{:ignores_binding, slot}`. A delivery that can't be rebuilt with its fields renamed (a hand-built `%Delivery{}` `Delivery.new/2` refuses, or rows `Table.rows/1` refuses, its faults under `[:rows]`) is `{:unrenamable, slot, faults}`, its faults the delivery's, never a raise. The rebuilt delivery keeps `served`, with `stale`, unchanged. A fixture without bindings is not probed |
 
@@ -53,6 +53,10 @@ use writes one test per check into a describe block, refuses a missing component
 
 ```test:kit-checks
 every check is failed by a component built to break it, with the finding that names the rule, and every check is passed by the honest components
+```
+
+```test:kit-order
+a role-keyed order on declared single-field roles passes, resolved by a fixture's bindings or not bound at all; an undeclared or many role is bad_order naming the slot and the answer; a fixture's binding that lacks a required role in the order is unresolved_order, and it formats as a line
 ```
 
 ```test:kit-bindings

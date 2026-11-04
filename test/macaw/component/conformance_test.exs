@@ -6,7 +6,7 @@ defmodule Macaw.Component.ConformanceTest do
   alias Macaw.Component.Conformance
 
   doctest Conformance
-  alias Macaw.Component.Test.{Broken, Honest}
+  alias Macaw.Component.Test.{Broken, Honest, Ordered}
   alias Macaw.Data.Delivery
 
   @now ~U[2026-10-28 12:00:00Z]
@@ -302,6 +302,36 @@ defmodule Macaw.Component.ConformanceTest do
 
     for check <- [:delivery, :names, :keyboard, :colors, :headings, :ids, :modes],
         do: assert(broken("none", check) == [], "#{check}")
+  end
+
+  @tag verifies: "kit-order"
+  test "the order check passes role keys the slot's declarations pass and a fixture's bindings resolve" do
+    check = fn answer, bindings ->
+      fixture = %{settings: %{"answer" => answer}, bindings: bindings}
+      Conformance.check(:order, Ordered, fixtures: [fixture], now: @now)
+    end
+
+    newest = [{{:role, "t"}, :desc}]
+    resolved = %{"rows" => %{"t" => "at", "value" => "v", "other" => "w"}}
+
+    # Resolved by a fixture's bindings, or not bound at all, which is not probed.
+    assert check.(newest, resolved) == []
+    assert check.(newest, %{}) == []
+    assert check.([{{:role, "label"}, :asc}], resolved) == []
+
+    assert Conformance.check(Ordered, fixtures: [%{settings: %{"answer" => newest}}], now: @now) ==
+             []
+
+    for bad <- [[{{:role, "nope"}, :asc}], [{{:role, "values"}, :asc}]] do
+      assert whats(check.(bad, %{})) == [{:bad_order, "rows", bad}]
+    end
+
+    # A fixture's binding that lacks a required role in the order: its bindings aren't resolved.
+    assert [{:order, {{"fixture 1", nil, nil}, {:unresolved_order, "rows", ^newest} = what}}] =
+             check.(newest, %{"rows" => %{"value" => "v", "other" => "w"}})
+
+    assert Conformance.format({:order, {{"fixture 1", nil, nil}, what}}) =~
+             ~s(order for "rows" can't be resolved by the fixture's bindings)
   end
 
   @tag verifies: "kit-bindings"

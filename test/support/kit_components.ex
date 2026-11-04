@@ -463,3 +463,38 @@ defmodule Macaw.Component.Test.Broken.Bound do
 
   def render(:content, assigns), do: Kit.drawn_or(assigns, "")
 end
+
+defmodule Macaw.Component.Test.Ordered do
+  @moduledoc false
+  # Asks for whatever order the settings hold, over a slot with a role of each sort.
+  use Macaw.Component, name: "test.ordered", kinds: [:content]
+  alias Macaw.Component.Test.Kit
+
+  @impl true
+  def parameters, do: %{"answer" => %{type: :term, default: []}}
+
+  @impl true
+  def declarations(_settings),
+    do:
+      {:ok,
+       slots: %{
+         "rows" => %{
+           requires: %{
+             "t" => %{type: :time, window: true},
+             "when" => %{type: :time, window: true, optional: true},
+             "value" => %{type: :number},
+             "other" => %{type: [:number, :text]},
+             "label" => %{type: :text, optional: true},
+             "values" => %{type: :number, many: true, optional: true},
+             "at" => %{type: :point, optional: true},
+             "mixed" => %{type: [:number, :color], optional: true}
+           }
+         }
+       }}
+
+  @impl true
+  def order(_slot, %{"answer" => answer}), do: answer
+
+  @impl true
+  def render(:content, assigns), do: Kit.drawn_or(assigns, "<p>Rows</p>")
+end

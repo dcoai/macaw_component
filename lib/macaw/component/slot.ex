@@ -8,6 +8,7 @@ defmodule Macaw.Component.Slot do
   """
 
   alias Macaw.Data.{Quantity, Schema}
+  alias Macaw.Data.Source.Order
 
   @types [:time, :number, :category, :text, :color, :point]
   @requirement_keys [:type, :window, :identity, :quantity, :many, :optional, :doc]
@@ -174,6 +175,19 @@ defmodule Macaw.Component.Slot do
                 inspect(faults)
     end
   end
+
+  # The types a field can be sorted by are macaw_data's to say.
+  @orderable Enum.filter(@types, fn type ->
+               {:ok, schema} = Schema.new(%{"field" => %{type: type}})
+               Order.faults([{"field", :asc}], schema) == []
+             end)
+
+  @doc false
+  # Whether a built role can sort rows, whichever field a passing binding gives it: one
+  # field, of a type that has an order (spec/01 §1.4).
+  @spec orderable?(map()) :: boolean()
+  def orderable?(%{many: many, type: types}),
+    do: not many and Enum.all?(types, &(&1 in @orderable))
 
   # A field a `many` role lists twice, by either spelling, is `{:duplicate, field}`, once
   # for each field repeated: no role reads one field twice.

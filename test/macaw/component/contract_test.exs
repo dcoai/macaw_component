@@ -4,7 +4,10 @@ defmodule Macaw.Component.ContractTest do
   use ExUnit.Case, async: true
 
   alias Macaw.Component
-  alias Macaw.Component.Test.{Answers, BadParameters, Cards, Fixed}
+  alias Macaw.Component.Test.{Answers, BadParameters, Cards, Fixed, Ordered}
+  alias Macaw.Component.Slot
+  alias Macaw.Data.Schema
+  alias Macaw.Data.Source.Order
 
   doctest Macaw.Component
 
@@ -148,9 +151,140 @@ defmodule Macaw.Component.ContractTest do
     assert Component.order(Answers, "s", %{"answer" => []}) == {:ok, []}
     assert Component.order(Fixed, "items", %{}) == {:ok, []}
 
-    for bad <- [nil, :asc, [{"p50", :down}], [{"p50", :asc}, {:p50, :desc}], [{1, :asc}], ["p50"]] do
+    for bad <- [
+          nil,
+          :asc,
+          [{"p50", :down}],
+          [{"p50", :asc}, {:p50, :desc}],
+          [{1, :asc}],
+          ["p50"],
+          [{"p50", :asc} | :tail]
+        ] do
       assert Component.order(Answers, "s", %{"answer" => bad}) == {:error, {:bad_order, bad}}
     end
+  end
+
+  @tag verifies: "order-roles"
+  test "order/3 answers role keys the slot's declarations pass, and refuses the rest" do
+    for good <- [
+          [{{:role, "t"}, :desc}],
+          [{{:role, "t"}, :desc}, {"p50", :asc}],
+          [{:p50, :asc}, {{:role, "value"}, :asc}, {{:role, "label"}, :desc}],
+          [{{:role, "other"}, :asc}]
+        ] do
+      assert Component.order(Ordered, "rows", %{"answer" => good}) == {:ok, good}
+    end
+
+    for bad <- [
+          # Undeclared, and named twice.
+          [{{:role, "nope"}, :asc}],
+          [{{:role, "t"}, :asc}, {{:role, "t"}, :desc}],
+          # No one field to sort by, and a type with no order.
+          [{{:role, "values"}, :asc}],
+          [{{:role, "at"}, :asc}],
+          [{{:role, "mixed"}, :asc}],
+          # A role key of no shape, and a bad field key beside a good role key.
+          [{{:role, "t"}, :down}],
+          [{{:role, :t}, :asc}],
+          [{{:role, "t"}, :asc}, {"p50", :down}],
+          [{"p50", :asc}, {:p50, :desc}, {{:role, "t"}, :asc}]
+        ] do
+      assert Component.order(Ordered, "rows", %{"answer" => bad}) == {:error, {:bad_order, bad}},
+             inspect(bad)
+    end
+
+    # A slot the component doesn't declare has no roles.
+    role = [{{:role, "t"}, :asc}]
+    assert Component.order(Ordered, "nope", %{"answer" => role}) == {:error, {:bad_order, role}}
+
+    # Settings that build no declarations can't pass a role key. A field-keyed order never
+    # asks: this component's declarations fail for every answer that is an order.
+    assert Component.order(Answers, "s", %{"answer" => role}) == {:error, {:bad_order, role}}
+    assert Component.order(Answers, "s", %{"answer" => [{"p50", :asc}]}) == {:ok, [{"p50", :asc}]}
+  end
+
+  @tag verifies: "order-resolve"
+  test "resolve_order/4 answers an order in fields, for the slot's resolved bindings" do
+    resolve = fn answer, bindings ->
+      Component.resolve_order(Ordered, "rows", %{"answer" => answer}, bindings)
+    end
+
+    bound = %{"t" => "at", "value" => "v", "other" => "w", "values" => ["v", "w"]}
+
+    # In place, beside a field key kept as given.
+    assert resolve.([{{:role, "t"}, :desc}], bound) == {:ok, [{"at", :desc}]}
+
+    assert resolve.([{:host, :asc}, {{:role, "value"}, :desc}, {"p50", :asc}], bound) ==
+             {:ok, [{:host, :asc}, {"v", :desc}, {"p50", :asc}]}
+
+    # An unbound window role reads the window field through Slot.resolve/3, optional or not.
+    {:ok, %{slots: %{"rows" => slot}}} = Component.declarations(Ordered, %{})
+
+    schema =
+      Schema.new!(%{
+        stamp: %{type: :time, window: true},
+        v: %{type: :number},
+        w: %{type: :number},
+        name: %{type: :text}
+      })
+
+    resolved = Slot.resolve(slot, schema, %{"value" => "v", "other" => "w"})
+
+    assert resolve.([{{:role, "t"}, :desc}], resolved) == {:ok, [{"stamp", :desc}]}
+    assert resolve.([{{:role, "when"}, :desc}], resolved) == {:ok, [{"stamp", :desc}]}
+
+    # An unbound optional role drops its key, and an optional role bound takes its place.
+    assert resolve.([{{:role, "label"}, :asc}, {{:role, "t"}, :desc}], resolved) ==
+             {:ok, [{"stamp", :desc}]}
+
+    assert resolve.([{{:role, "label"}, :asc}], Map.put(resolved, "label", "name")) ==
+             {:ok, [{"name", :asc}]}
+
+    # Bindings that are no resolved binding are refused, never an order of fewer keys.
+    for {answer, bindings} <- [
+          {[{{:role, "value"}, :asc}], %{}},
+          {[{{:role, "t"}, :asc}], %{"value" => "v"}},
+          {[{{:role, "value"}, :asc}], %{"value" => ["v"]}},
+          {[{{:role, "value"}, :asc}], %{"value" => :v}},
+          {[{{:role, "value"}, :asc}], %{"value" => ""}}
+        ] do
+      assert resolve.(answer, bindings) == {:error, {:bad_order, answer}}, inspect(bindings)
+    end
+
+    # Two roles on one field, which Slot.check/3 passes: the later key can't decide anything.
+    same = %{"t" => "at", "value" => "v", "other" => "v"}
+    assert Slot.check(slot, schema, %{"value" => "v", "other" => "v"}) == :ok
+
+    assert resolve.([{{:role, "value"}, :asc}, {{:role, "other"}, :desc}], same) ==
+             {:ok, [{"v", :asc}]}
+
+    # And a role's field beside a field key, by either spelling, whichever comes first.
+    assert resolve.([{:v, :desc}, {{:role, "value"}, :asc}], same) == {:ok, [{:v, :desc}]}
+    assert resolve.([{{:role, "value"}, :asc}, {:v, :desc}], same) == {:ok, [{"v", :asc}]}
+
+    # A field-keyed order is order/3's answer, whatever the bindings hold.
+    fields = [{"p50", :desc}, {:host, :asc}]
+    assert resolve.(fields, %{}) == {:ok, fields}
+    assert Component.resolve_order(Fixed, "items", %{}, %{}) == {:ok, []}
+
+    assert Component.resolve_order(Answers, "s", %{"answer" => fields}, %{"t" => "at"}) ==
+             {:ok, fields}
+
+    # order/3's refusals pass through.
+    for bad <- [[{{:role, "nope"}, :asc}], [{{:role, "values"}, :asc}], [{"p50", :down}], nil] do
+      assert resolve.(bad, bound) == {:error, {:bad_order, bad}}
+    end
+
+    # What it answers is a request's order, against the schema a binding passed for.
+    {:ok, order} =
+      resolve.(
+        [{{:role, "t"}, :desc}, {{:role, "value"}, :asc}, {{:role, "other"}, :asc}],
+        resolved
+      )
+
+    assert order == [{"stamp", :desc}, {"v", :asc}, {"w", :asc}]
+    assert Order.shape(order) == []
+    assert Order.faults(order, schema) == []
   end
 
   @tag verifies: "behavior-declarations"

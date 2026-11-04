@@ -22,8 +22,9 @@ defmodule Macaw.Component do
   The contract is unstable until two implementers pass its kit (spec/00 §3).
   """
 
-  alias Macaw.Component.Declarations
-  alias Macaw.Data.Parameter
+  alias Macaw.Component.{Declarations, Slot}
+  alias Macaw.Data.{Parameter, Schema}
+  alias Macaw.Data.Source.Order
 
   @kinds [:navigation, :content, :control, :container]
 
@@ -44,6 +45,12 @@ defmodule Macaw.Component do
   @typedoc "A kind a component renders as (spec/01 §2)."
   @type kind :: :navigation | :content | :control | :container
 
+  @typedoc """
+  A row order as a component asks for it (spec/01 §1.4): each key's field a name of the
+  schema's or `{:role, name}`, a role of the slot, the first key deciding first.
+  """
+  @type order :: [{Schema.name() | {:role, String.t()}, :asc | :desc}]
+
   @typedoc "A fault: the path to the value, and why."
   @type fault :: {list(), term()}
 
@@ -56,7 +63,7 @@ defmodule Macaw.Component do
   @callback render(kind(), assigns :: map()) :: Phoenix.HTML.Safe.t()
   @callback budget(slot :: String.t(), settings :: map(), size :: {number(), number()}) ::
               pos_integer() | nil
-  @callback order(slot :: String.t(), settings :: map()) :: Macaw.Data.Source.Order.t()
+  @callback order(slot :: String.t(), settings :: map()) :: order()
   @callback init(settings :: map(), Macaw.Component.Context.t()) :: value()
   @callback delivery(value(), slot :: String.t(), Macaw.Data.Delivery.t()) :: value()
   @callback size(value(), {number(), number()}) :: value()
@@ -201,26 +208,116 @@ defmodule Macaw.Component do
 
   @doc """
   The row order a slot asks its source for (spec/01 §1.4): `{:ok, []}` for a component
-  without `order/2`, else `{:ok, order}` for an order of `Macaw.Data.Source.Order`'s shape
-  (`[{field, :asc | :desc}, …]`, each field once), and `{:error, {:bad_order, answer}}`
-  otherwise. The host puts it in the slot's request, so a capped delivery holds the first
-  rows in it.
+  without `order/2`, else `{:ok, order}`, and `{:error, {:bad_order, answer}}` otherwise.
+  An order's field keys are of `Macaw.Data.Source.Order`'s shape (`{field, :asc | :desc}`,
+  each field once); a role key, `{{:role, name}, direction}`, names a role the slot
+  declares for these settings, once, of one field and of types that have an order.
+
+  A host doesn't put this answer in a request: `resolve_order/4` answers it in fields. A
+  field-keyed order never asks for the declarations.
   """
-  @spec order(module(), String.t(), map()) ::
-          {:ok, Macaw.Data.Source.Order.t()} | {:error, {:bad_order, term()}}
+  @spec order(module(), String.t(), map()) :: {:ok, order()} | {:error, {:bad_order, term()}}
   def order(module, slot, settings) when is_binary(slot) do
+    with {:ok, order, _requires} <- asked_order(module, slot, settings), do: {:ok, order}
+  end
+
+  @doc """
+  The order a slot's request takes (spec/01 §1.4): `order/3`'s answer in fields, for
+  `bindings`, the slot's resolved binding (`Slot.resolve/3`). A role key takes its role's
+  field, so an unbound `window` role reads the window field; an optional role left unbound
+  drops its key; a key on a field an earlier key names is dropped, since it can decide
+  nothing. A required role absent from `bindings`, or one holding anything but a field's
+  name, is `{:error, {:bad_order, answer}}`, as `order/3`'s refusals are.
+  """
+  @spec resolve_order(module(), String.t(), map(), map()) ::
+          {:ok, Order.t()} | {:error, {:bad_order, term()}}
+  def resolve_order(module, slot, settings, bindings) when is_binary(slot) and is_map(bindings) do
+    with {:ok, order, requires} <- asked_order(module, slot, settings) do
+      case fields_of(order, requires, bindings) do
+        {:ok, fields} -> {:ok, Enum.uniq_by(fields, fn {f, _dir} -> Schema.spell(f) end)}
+        :refused -> {:error, {:bad_order, order}}
+      end
+    end
+  end
+
+  # The checked answer of `order/2`, with the roles of its slot when it names any.
+  defp asked_order(module, slot, settings) do
     Code.ensure_loaded(module)
 
     if function_exported?(module, :order, 2) do
       answer = module.order(slot, settings)
 
-      if is_list(answer) and Macaw.Data.Source.Order.shape(answer) == [],
-        do: {:ok, answer},
-        else: {:error, {:bad_order, answer}}
+      case checked_order(answer, module, slot, settings) do
+        {:ok, requires} -> {:ok, answer, requires}
+        :refused -> {:error, {:bad_order, answer}}
+      end
     else
-      {:ok, []}
+      {:ok, [], %{}}
     end
   end
+
+  defp checked_order(answer, module, slot, settings) when is_list(answer) do
+    # `Order.shape/1` knows fields alone, and raises on an improper list.
+    with false <- List.improper?(answer),
+         {roles, fields} = Enum.split_with(answer, &role_key?/1),
+         [] <- Order.shape(fields) do
+      checked_roles(roles, module, slot, settings)
+    else
+      _bad -> :refused
+    end
+  end
+
+  defp checked_order(_answer, _module, _slot, _settings), do: :refused
+
+  defp role_key?({{:role, _name}, _direction}), do: true
+  defp role_key?(_key), do: false
+
+  defp checked_roles([], _module, _slot, _settings), do: {:ok, %{}}
+
+  defp checked_roles(keys, module, slot, settings) do
+    with {:ok, %{slots: %{^slot => %{requires: requires}}}} <- declarations(module, settings),
+         names = Enum.map(keys, fn {{:role, name}, _direction} -> name end),
+         true <- names == Enum.uniq(names),
+         true <- Enum.all?(keys, &role_key_of?(&1, requires)) do
+      {:ok, requires}
+    else
+      _refused -> :refused
+    end
+  end
+
+  defp role_key_of?({{:role, name}, direction}, requires) when direction in [:asc, :desc] do
+    case requires do
+      %{^name => requirement} -> Slot.orderable?(requirement)
+      _undeclared -> false
+    end
+  end
+
+  defp role_key_of?(_key, _requires), do: false
+
+  defp fields_of(order, requires, bindings) do
+    order
+    |> Enum.reduce_while([], fn key, fields ->
+      case field_of(key, requires, bindings) do
+        {:ok, field} -> {:cont, [field | fields]}
+        :dropped -> {:cont, fields}
+        :refused -> {:halt, :refused}
+      end
+    end)
+    |> case do
+      :refused -> :refused
+      fields -> {:ok, Enum.reverse(fields)}
+    end
+  end
+
+  defp field_of({{:role, name}, direction}, requires, bindings) do
+    case {Map.fetch(bindings, name), requires[name].optional} do
+      {{:ok, field}, _optional} when is_binary(field) and field != "" -> {:ok, {field, direction}}
+      {:error, true} -> :dropped
+      _no_field -> :refused
+    end
+  end
+
+  defp field_of(key, _requires, _bindings), do: {:ok, key}
 
   @doc "Whether a module exports every contained transition."
   @spec contained?(module()) :: boolean()

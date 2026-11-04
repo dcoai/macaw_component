@@ -4,6 +4,8 @@
 
 - **Breaking:** on `macaw_data ~> 0.12.0` (was `~> 0.11.0`) (#20, #23).
 - The conformance kit's `:bindings` check reads a table delivery's rows through `Table.rows/1`'s value: rows it refuses (a hand-built delivery's) are the finding `{:unrenamable, slot, faults}`, never a raise. The rename keeps `served`, with `stale`, unchanged (#20, #23).
+- **New:** an order key can name a role (#21, #24, spec/01 §1.4). `order/2` may answer `{{:role, name}, direction}`, beside field keys, so a component can ask for the newest rows by its `t` role whichever field a document binds. `Macaw.Component.order/3` checks each against the slot's declarations: an undeclared role, one named twice, a `many` role and a role with a type that has no order are `{:bad_order, answer}`. The new `Macaw.Component.resolve_order/4` answers the order in fields for the slot's resolved bindings, for the request; a host calls it in place of `order/3`. The conformance kit's `:order` check runs both, its new finding `{:unresolved_order, slot, answer}` a fixture's bindings that lack a required role in the order.
+- `Macaw.Component.order/3` answers `{:bad_order, answer}` for an improper list, where it raised from `Macaw.Data.Source.Order.shape/1` (#24, macaw_data#169).
 - Spec 02 §6 names the `stale` state's fact, a delivery's `served.stale` (#20, #23).
 
 

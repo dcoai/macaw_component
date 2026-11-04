@@ -158,6 +158,10 @@ if Code.ensure_loaded?(LazyHTML) do
     defp words({:bad_order, slot, answer}),
       do: "order for #{inspect(slot)} answered #{inspect(answer)}"
 
+    defp words({:unresolved_order, slot, answer}),
+      do:
+        "order for #{inspect(slot)} can't be resolved by the fixture's bindings: #{inspect(answer)}"
+
     defp words({:bad_budget, slot, size, answer}),
       do: "budget for #{inspect(slot)} at #{inspect(size)} answered #{inspect(answer)}"
 

@@ -138,8 +138,8 @@ if Code.ensure_loaded?(LazyHTML) do
       for fixture <- Keyword.fetch!(opts, :fixtures),
           {:ok, settings, declarations} <- [Render.setup(module, fixture)],
           slot <- Map.keys(declarations.slots),
-          {:error, {:bad_order, answer}} <- [Component.order(module, slot, settings)],
-          do: {{fixture.name, nil, nil}, {:bad_order, slot, answer}}
+          what <- order_findings(module, slot, settings, fixture.bindings),
+          do: {{fixture.name, nil, nil}, what}
     end
 
     defp what(:contained, module, opts) do
@@ -523,6 +523,25 @@ if Code.ensure_loaded?(LazyHTML) do
 
       Html.text(tree) != "" or
         Enum.any?(all, &(Html.attr(&1, "role") == "img" and Html.named?(&1, all)))
+    end
+
+    # -- order ----------------------------------------------------------------------------
+
+    # An order the slot refuses, or that a fixture's bindings for the slot don't resolve.
+    defp order_findings(module, slot, settings, bindings) do
+      case {Component.order(module, slot, settings), bindings} do
+        {{:error, {:bad_order, answer}}, _bindings} ->
+          [{:bad_order, slot, answer}]
+
+        {{:ok, _order}, %{^slot => %{} = bound}} ->
+          case Component.resolve_order(module, slot, settings, bound) do
+            {:ok, _fields} -> []
+            {:error, {:bad_order, answer}} -> [{:unresolved_order, slot, answer}]
+          end
+
+        {{:ok, _order}, _unbound} ->
+          []
+      end
     end
 
     # -- bindings -------------------------------------------------------------------------
