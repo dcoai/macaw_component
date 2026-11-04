@@ -1,13 +1,23 @@
 # Changelog
 
-## Unreleased
+## v0.6.0 (2026-11-04)
+
+**On macaw_data 0.12, and an order key can name a role** (#20, #21). This release is breaking for an adopter pinning macaw_data `~> 0.11`. macaw_component's own API only grows: a component, a host and a fixture that use no role key change nothing else.
+
+### Upgrading from 0.5.x
+
+1. **Depend on `macaw_data ~> 0.12.0`** and follow its "Upgrading from 0.11.x" for any call you make into it directly. In a component and in a test the one to look for is `Delivery.rows/1`, now `{:ok, rows}`: call `Delivery.rows!/1` for rows a delivery holds, or match the value. A served map built by hand adds `stale`.
+2. **A host resolves a slot's order before its request.** Call `Macaw.Component.resolve_order(module, slot, settings, bindings)` where it called `Macaw.Component.order/3`, with `bindings` the slot's `Slot.resolve/3` map, and put its answer in the request and the pooling key. The errors are the same `{:error, {:bad_order, answer}}`, and a field-keyed order answers as it did. A host left on `order/3` passes a role key on to `Macaw.Data.Source.Order`, which refuses it.
+3. **A component may ask for an order by role:** `def order("rows", _settings), do: [{{:role, "t"}, :desc}]`. It needs nothing else, but `budget/3` doesn't see bindings: if an optional role is left unbound its key drops, and a budget still caps the rows in the source's own order.
+4. **A fixture's `bindings` must be resolved for a role in the order.** The kit's `:order` check resolves a role-keyed order through a fixture's bindings for the slot, so a required role in the order, a `window` role's field included, must be there, else `{:unresolved_order, slot, answer}`. A fixture without bindings for the slot isn't resolved.
+
+### Changes
 
 - **Breaking:** on `macaw_data ~> 0.12.0` (was `~> 0.11.0`) (#20, #23).
 - The conformance kit's `:bindings` check reads a table delivery's rows through `Table.rows/1`'s value: rows it refuses (a hand-built delivery's) are the finding `{:unrenamable, slot, faults}`, never a raise. The rename keeps `served`, with `stale`, unchanged (#20, #23).
 - **New:** an order key can name a role (#21, #24, spec/01 §1.4). `order/2` may answer `{{:role, name}, direction}`, beside field keys, so a component can ask for the newest rows by its `t` role whichever field a document binds. `Macaw.Component.order/3` checks each against the slot's declarations: an undeclared role, one named twice, a `many` role and a role with a type that has no order are `{:bad_order, answer}`. The new `Macaw.Component.resolve_order/4` answers the order in fields for the slot's resolved bindings, for the request; a host calls it in place of `order/3`. The conformance kit's `:order` check runs both, its new finding `{:unresolved_order, slot, answer}` a fixture's bindings that lack a required role in the order.
 - `Macaw.Component.order/3` answers `{:bad_order, answer}` for an improper list, where it raised from `Macaw.Data.Source.Order.shape/1` (#24, macaw_data#169).
 - Spec 02 §6 names the `stale` state's fact, a delivery's `served.stale` (#20, #23).
-
 
 ## v0.5.0 (2026-11-03)
 
