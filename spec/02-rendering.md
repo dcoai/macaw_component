@@ -126,7 +126,7 @@ the kit finds each rule broken by a render that breaks it, and nothing in a rend
 
 ## 6. Drawn states {#components-states}
 
-**Every component is always in exactly one drawn state:** `crashed`, `down`, `invalid`, `loading`, `no_data`, `stale`, `capped` or `live`, in that precedence. `capped` says the rows drawn are fewer than the data: the source capped them, the runtime reduced them, or the component drew fewer than it was handed. Each has a theme role, a glyph and words, and is never blank. (visualize.md C3.)
+**Every component is always in exactly one drawn state:** `crashed`, `down`, `invalid`, `loading`, `no_data`, `stale`, `capped` or `live`, in that precedence. `capped` says the rows drawn are fewer than the data: the source capped them, the runtime reduced them, or the component drew fewer than it was handed. `stale` says the rows are an answer the source could not refresh: its fact is the delivery's `served.stale` ([macaw_data 01](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-delivery)), which the host reads to pick the state. Each has a theme role, a glyph and words, and is never blank. (visualize.md C3.)
 
 `Macaw.Component.Drawn`:
 - `all/0` is the eight in precedence order. `pick(states)` is the one of highest precedence among a list, `:live` for `[]`: a host with a slot loading and another stale shows `loading`, and a component that draws fewer rows than it was handed picks `capped` over its assigned `live`.

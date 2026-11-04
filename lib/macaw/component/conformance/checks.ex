@@ -575,29 +575,44 @@ if Code.ensure_loaded?(LazyHTML) do
     # A delivery with its fields renamed: tuple rows' names, else the rows' keys, and the
     # types' keys, as `Delivery.new/2` answers it. Rows that are a table or another struct
     # are read as row maps; rows read by position only (a tensor or tuple rows, without
-    # names) have no names to rename.
+    # names) have no names to rename. Rows of a hand-built delivery
+    # that `Table.rows/1` refuses are its faults, under `[:rows]` as `Delivery.rows/1`
+    # puts them.
     defp rename(%Delivery{} = delivery, renames) do
-      {rows, names} =
-        case delivery.names do
-          nil -> {rename_rows(delivery.rows, renames), nil}
-          names -> {delivery.rows, Enum.map(names, &rename_key(&1, renames))}
-        end
-
-      Delivery.new(rows,
-        served: delivery.served,
-        origin: delivery.origin,
-        schema: delivery.schema,
-        names: names,
-        types: rename_keys(delivery.types, renames)
-      )
+      with {:ok, rows, names} <- renamed_rows(delivery, renames) do
+        Delivery.new(rows,
+          served: delivery.served,
+          origin: delivery.origin,
+          schema: delivery.schema,
+          names: names,
+          types: rename_keys(delivery.types, renames)
+        )
+      end
     end
+
+    defp renamed_rows(%Delivery{names: nil, rows: rows}, renames) do
+      with {:ok, renamed} <- rename_rows(rows, renames), do: {:ok, renamed, nil}
+    end
+
+    defp renamed_rows(%Delivery{names: names, rows: rows}, renames),
+      do: {:ok, rows, Enum.map(names, &rename_key(&1, renames))}
 
     defp rename_rows(rows, renames) do
       cond do
-        Table.unnamed?(rows) -> rows
-        is_struct(rows) -> rows |> Table.rows() |> rename_rows(renames)
-        is_list(rows) -> Enum.map(rows, &rename_row(&1, renames))
-        true -> rename_keys(rows, renames)
+        Table.unnamed?(rows) -> {:ok, rows}
+        is_struct(rows) -> read_and_rename(rows, renames)
+        is_list(rows) -> {:ok, Enum.map(rows, &rename_row(&1, renames))}
+        true -> {:ok, rename_keys(rows, renames)}
+      end
+    end
+
+    defp read_and_rename(rows, renames) do
+      case Table.rows(rows) do
+        {:ok, read} ->
+          rename_rows(read, renames)
+
+        {:error, faults} ->
+          {:error, Enum.map(faults, fn {path, why} -> {[:rows | path], why} end)}
       end
     end
 

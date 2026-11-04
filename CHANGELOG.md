@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** on `macaw_data ~> 0.12.0` (was `~> 0.11.0`) (#20, #23).
+- The conformance kit's `:bindings` check reads a table delivery's rows through `Table.rows/1`'s value: rows it refuses (a hand-built delivery's) are the finding `{:unrenamable, slot, faults}`, never a raise. The rename keeps `served`, with `stale`, unchanged (#20, #23).
+- Spec 02 §6 names the `stale` state's fact, a delivery's `served.stale` (#20, #23).
+
+
 ## v0.5.0 (2026-11-03)
 
 **On macaw_data 0.11** (#17, #16). This release is breaking only for an adopter pinning macaw_data `~> 0.10`: follow macaw_data's "Upgrading from 0.10.x". macaw_component's own API is unchanged.

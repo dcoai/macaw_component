@@ -312,7 +312,11 @@ defmodule Macaw.Component.ConformanceTest do
     for points <- [
           Delivery.new!([%{"name" => "a", "v" => 1, "w" => 2}]),
           Delivery.new!([{"a", 1, 2}, {"b", 3, 4}], names: [:name, :v, :w], types: %{v: :number}),
-          Delivery.new!(%{name: ["a", "b"], v: [1, 2], w: [3, 4]})
+          Delivery.new!(%{name: ["a", "b"], v: [1, 2], w: [3, 4]}),
+          # A table's rows are read as row maps.
+          Delivery.new!(Delivery.table!(@points)),
+          # Honest.Bound draws `served.stale`, so a rename that lost it would change the render.
+          Delivery.new!([%{name: "a", v: 1, w: 2}], served: [stale: true])
         ] do
       opts = put_in(@bound, [:fixtures, Access.at(0), :deliveries, "points"], points)
       assert Conformance.check(:bindings, Honest.Bound, opts) == [], inspect(points)
@@ -331,6 +335,18 @@ defmodule Macaw.Component.ConformanceTest do
 
     assert Conformance.format({:bindings, {{"fixture 1", nil, nil}, what}}) =~
              ~s(can't be rebuilt with its fields renamed)
+
+    # A hand-built delivery whose rows Table.rows/1 refuses is the same finding, its faults the
+    # delivery's: macaw_data 0.12's rows/1 answers them as a value.
+    refused = %{Delivery.new!([%{"name" => "a", "v" => 1, "w" => 2}]) | rows: %URI{}}
+    opts = put_in(@bound, [:fixtures, Access.at(0), :deliveries, "points"], refused)
+
+    assert Conformance.check(:bindings, Honest.Bound, opts) ==
+             [
+               bindings:
+                 {{"fixture 1", nil, nil},
+                  {:unrenamable, "points", [{[:rows], {:type, :source}}]}}
+             ]
 
     [finding] = Conformance.check(:bindings, Broken.Bound, @bound)
     assert finding == {:bindings, {{"fixture 1", :content, :live}, {:ignores_binding, "points"}}}

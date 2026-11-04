@@ -350,7 +350,7 @@ defmodule Macaw.Component.Test.Chart do
     do: Drawn.render(drawn, ctx)
 
   def render(:content, %{settings: %{"flaw" => flaw}, context: ctx, deliveries: deliveries}) do
-    rows = deliveries |> Map.fetch!("points") |> Macaw.Data.Delivery.rows()
+    rows = deliveries |> Map.fetch!("points") |> Macaw.Data.Delivery.rows!()
     desc = Context.id(ctx, "desc")
     token = if flaw == "constant_token", do: "t", else: Integer.to_string(:erlang.phash2(rows))
 
@@ -411,11 +411,13 @@ defmodule Macaw.Component.Test.Honest.Bound do
       Context.field(ctx, "points", "label") | Context.field(ctx, "points", "values")
     ]
 
-    rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows!()
+    points = Map.fetch!(deliveries, "points")
+    rows = Delivery.named_rows!(points)
+    caption = if points.served.stale, do: "Points, out of date", else: "Points"
 
     Kit.drawn_or(
       assigns,
-      ~s(<table><caption>Points</caption><thead><tr>) <>
+      ~s(<table><caption>#{caption}</caption><thead><tr>) <>
         Enum.map_join(fields, "", &~s(<th scope="col">#{&1}</th>)) <>
         "</tr></thead><tbody>" <>
         Enum.map_join(rows, "", fn row ->
