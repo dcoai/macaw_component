@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The conformance kit's `:declarations` check probes a bindable `:number`, `:text` or `:category` parameter with a nil default (macaw_data 0.12.1), so a component whose declarations read one is the finding `{:reads_bindable, name}`. It was skipped. `:time`, `:color` and `:point` stay unprobed, with a nil default as with a real one (#28, #29).
+
 ## v0.6.0 (2026-11-04)
 
 **On macaw_data 0.12, and an order key can name a role** (#20, #21). This release is breaking for an adopter pinning macaw_data `~> 0.11`. macaw_component's own API only grows: a component, a host and a fixture that use no role key change nothing else.

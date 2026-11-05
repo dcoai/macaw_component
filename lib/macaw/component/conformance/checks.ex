@@ -232,6 +232,10 @@ if Code.ensure_loaded?(LazyHTML) do
     defp other_value(%{type: :category, default: default}) when is_binary(default),
       do: default <> "-x"
 
+    # A nil default is the parameter's value until it's given one, so any value differs.
+    defp other_value(%{type: :number, default: nil}), do: 1
+    defp other_value(%{type: type, default: nil}) when type in [:text, :category], do: "x"
+
     defp other_value(_parameter), do: :none
 
     # -- kinds ----------------------------------------------------------------------------

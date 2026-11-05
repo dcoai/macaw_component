@@ -6,7 +6,7 @@ defmodule Macaw.Component.ConformanceTest do
   alias Macaw.Component.Conformance
 
   doctest Conformance
-  alias Macaw.Component.Test.{Broken, Honest, Ordered}
+  alias Macaw.Component.Test.{Broken, Honest, Optional, Ordered}
   alias Macaw.Data.Delivery
 
   @now ~U[2026-10-28 12:00:00Z]
@@ -166,6 +166,19 @@ defmodule Macaw.Component.ConformanceTest do
     assert_raise ArgumentError, ~r/not a component/, fn ->
       Conformance.check(:kinds, String, [])
     end
+  end
+
+  defp optional(reads),
+    do: Conformance.check(:declarations, Optional, fixtures: [%{settings: %{"reads" => reads}}])
+
+  @tag verifies: "kit-checks"
+  test "the bindable probe reaches a parameter with a nil default" do
+    for name <- ~w(low note tone) do
+      assert Enum.any?(whats(optional(name)), &match?({:reads_bindable, ^name}, &1)),
+             "reading #{name} should fail :declarations: #{inspect(optional(name))}"
+    end
+
+    assert optional("") == []
   end
 
   @tag verifies: "kit-checks"

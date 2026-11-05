@@ -157,6 +157,34 @@ defmodule Macaw.Component.Test.Honest.Scene do
     do: Kit.drawn_or(assigns, "<p>Scene at zoom #{inspect(assigns.value.zoom)}</p>")
 end
 
+defmodule Macaw.Component.Test.Optional do
+  @moduledoc false
+  # Three bindable parameters with no value by default. Its "reads" setting names the one
+  # its declarations read, which is the flaw; "" reads none.
+  use Macaw.Component, name: "test.optional", kinds: [:content]
+  alias Macaw.Component.Drawn
+
+  @impl true
+  def parameters do
+    %{
+      "reads" => %{type: :category, values: ["", "low", "note", "tone"], default: ""},
+      "low" => %{type: :number, default: nil, bindable: true},
+      "note" => %{type: :text, default: nil, bindable: true},
+      "tone" => %{type: :category, default: nil, bindable: true}
+    }
+  end
+
+  @impl true
+  def declarations(%{"reads" => ""}), do: {:ok, []}
+
+  def declarations(%{"reads" => name} = settings),
+    do: {:ok, events: ["#{name}-#{inspect(settings[name])}"]}
+
+  @impl true
+  def render(:content, %{drawn: :live}), do: {:safe, "<p>Optional</p>"}
+  def render(:content, assigns), do: Drawn.render(assigns.drawn, assigns.context)
+end
+
 defmodule Macaw.Component.Test.Broken do
   @moduledoc false
   # Honest in every kind unless its "flaw" setting names a rule to break.
