@@ -1,7 +1,17 @@
 # Changelog
 
-## Unreleased
+## v0.7.0 (2026-11-05)
 
+**On macaw_data 0.13** (#30, #31). This release is breaking only for an adopter pinning macaw_data `~> 0.12`. macaw_component's own API is unchanged, and one kit check finds more.
+
+### Upgrading from 0.6.x
+
+1. **Depend on `macaw_data ~> 0.13.0`** and follow its "Upgrading from 0.12.x" for any call you make into it directly. The ones to look for are `Macaw.Data.Reduce.lttb/3` and `m4/3`, and `Macaw.Data.FFT.magnitudes/1` and `window/2`, which now answer `{:ok, value}` or `{:error, reason}`.
+2. **A component whose declarations read a bindable parameter with a nil default now has a finding,** `{:reads_bindable, name}`, from the kit's `:declarations` check. Have it stop reading the parameter there.
+
+### Changes
+
+- **Breaking:** on `macaw_data ~> 0.13.0` (was `~> 0.12.0`) (#30, #31).
 - The conformance kit's `:declarations` check probes a bindable `:number`, `:text` or `:category` parameter with a nil default (macaw_data 0.12.1), so a component whose declarations read one is the finding `{:reads_bindable, name}`. It was skipped. `:time`, `:color` and `:point` stay unprobed, with a nil default as with a real one (#28, #29).
 
 ## v0.6.0 (2026-11-04)
