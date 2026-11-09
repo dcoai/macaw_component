@@ -164,7 +164,7 @@ A slot's `doc` is optional; a slot with no roles reads whole rows (a table showi
 - `{:duplicate, field}`: a `many` role listing a field twice, by either spelling, once for each field repeated: no role reads one field twice (a table's column, a chart's series);
 - `:unknown_role`: a role the slot doesn't require.
 
-**Resolving a binding for render.** `Macaw.Component.Slot.resolve(slot, schema, fields)` answers, for fields `check/3` passes, the map a host puts in the context's `bindings` ([02 §2](02-rendering.md#components-context)): each bound role mapped to its field as a string, or for a `many` role the list of its fields. A `window` role left unbound holds the schema's window field, by the same rule as `check/3`; an optional role left unbound is absent. It is the one source of the defaulting rule, so the core and every adopter resolve a binding the same way. Fields `check/3` refuses raise `ArgumentError`.
+**Resolving a binding for render.** `Macaw.Component.Slot.resolve(slot, schema, fields)` answers, for fields `check/3` passes, the map a host puts in the context's `bindings` ([02 §2](02-rendering.md#components-context)): each bound role mapped to its field as a string, or for a `many` role the list of its fields. A `window` role left unbound holds the schema's window field, by the same rule as `check/3`; an optional role left unbound is absent. It is the one source of the defaulting rule, so the core and every adopter resolve a binding the same way. It answers `{:ok, resolved}`, and for fields `check/3` refuses, `check/3`'s faults; `Slot.resolve!/3` raises `ArgumentError` there, for a binding the caller already checked (#33).
 
 Binding a slot (choosing its source and fields in a document) is the core's ([macaw_compose 06](https://github.com/dcoai/macaw/blob/main/spec/06-pages.md)); the check is here, so a component author and every host check bindings the same way.
 
@@ -177,7 +177,7 @@ a binding passes when every role's field meets its requirements; an unbound wind
 ```
 
 ```test:slot-resolve
-resolve/3 maps each bound role to its field as a string, a many role to its list; an unbound window role holds the window field, an unbound optional role is absent; a binding check/3 refuses raises
+resolve/3 maps each bound role to its field as a string, a many role to its list; an unbound window role holds the window field, an unbound optional role is absent; a binding check/3 refuses answers its faults, and resolve!/3 raises there
 ```
 
 ### 1.4 Budget per slot {#components-budget}

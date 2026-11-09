@@ -29,18 +29,11 @@ defmodule Macaw.Component.Mode do
   def features, do: @features
 
   @doc """
-  Whether a mode allows a feature. An unknown mode or feature raises `ArgumentError`: it is
-  a programming error, not data.
+  Whether a mode allows a feature. The mode and the feature are the function's contract,
+  so an unknown one fails as any wrong call does, a `FunctionClauseError`: a programming
+  error, not data.
   """
   @spec allows?(t(), atom()) :: boolean()
-  def allows?(mode, feature) do
-    mode in @modes ||
-      raise ArgumentError, "#{inspect(mode)} is not a mode; the modes are #{inspect(@modes)}"
-
-    feature in @features ||
-      raise ArgumentError,
-            "#{inspect(feature)} is not a feature; the features are #{inspect(@features)}"
-
-    MapSet.member?(Map.fetch!(@allowed, mode), feature)
-  end
+  def allows?(mode, feature) when mode in @modes and feature in @features,
+    do: MapSet.member?(Map.fetch!(@allowed, mode), feature)
 end

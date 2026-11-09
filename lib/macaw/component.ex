@@ -72,7 +72,11 @@ defmodule Macaw.Component do
   @optional_callbacks budget: 3, order: 2, init: 2, delivery: 3, size: 2, bound: 3
 
   defmacro __using__(opts) do
-    info = Macaw.Component.Compile.options!(opts, __CALLER__)
+    info =
+      case Macaw.Component.Compile.options(opts, __CALLER__) do
+        {:ok, info} -> info
+        {:error, message} -> raise ArgumentError, message
+      end
 
     quote do
       @behaviour Macaw.Component
@@ -344,6 +348,8 @@ defmodule Macaw.Component do
   @spec bound(module(), value(), String.t(), term()) :: value()
   def bound(module, value, name, new), do: contained!(module).bound(value, name, new)
 
+  # The core calls the transitions only on a module contained?/1 holds for; another is the
+  # caller's bug, refused by name (an :invariant of ci/raises_allowlist.exs).
   defp contained!(module) do
     contained?(module) ||
       raise ArgumentError,

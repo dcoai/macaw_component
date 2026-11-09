@@ -183,14 +183,14 @@ defmodule Macaw.Component.SlotStateTest do
       })
 
     assert Slot.resolve(s, @schema, %{"y" => [:latency], "who" => :host}) ==
-             %{"x" => "t", "y" => ["latency"], "who" => "host"}
+             {:ok, %{"x" => "t", "y" => ["latency"], "who" => "host"}}
 
     assert Slot.resolve(s, @schema, %{
              "x" => :t,
              "y" => ["latency"],
              "who" => "host",
              "label" => :note
-           }) == %{"x" => "t", "y" => ["latency"], "who" => "host", "label" => "note"}
+           }) == {:ok, %{"x" => "t", "y" => ["latency"], "who" => "host", "label" => "note"}}
 
     # An optional window role with no window field to read is absent.
     no_window = Schema.new!(%{v: %{type: :number}})
@@ -200,23 +200,30 @@ defmodule Macaw.Component.SlotStateTest do
              no_window,
              %{}
            ) ==
-             %{}
+             {:ok, %{}}
 
     # A slot with no roles reads whole rows.
-    assert Slot.resolve(slot(%{}), @schema, %{}) == %{}
+    assert Slot.resolve(slot(%{}), @schema, %{}) == {:ok, %{}}
   end
 
   @tag verifies: "slot-resolve"
-  test "resolve/3 raises on a binding check/3 refuses" do
+  test "resolve/3 answers check/3's faults for a binding it refuses; resolve!/3 raises there" do
     s = slot(%{"y" => %{type: :number}})
 
+    for fields <- [%{}, %{"y" => ["latency"]}] do
+      assert {:error, faults} = Slot.resolve(s, @schema, fields)
+      assert Slot.check(s, @schema, fields) == {:error, faults}
+    end
+
     assert_raise ArgumentError, ~r/does not pass Slot.check\/3.*:unbound/, fn ->
-      Slot.resolve(s, @schema, %{})
+      Slot.resolve!(s, @schema, %{})
     end
 
     assert_raise ArgumentError, ~r/:many/, fn ->
-      Slot.resolve(s, @schema, %{"y" => ["latency"]})
+      Slot.resolve!(s, @schema, %{"y" => ["latency"]})
     end
+
+    assert Slot.resolve!(s, @schema, %{"y" => :latency}) == %{"y" => "latency"}
   end
 
   @tag verifies: "state-vocabulary"

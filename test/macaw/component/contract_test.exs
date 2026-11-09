@@ -228,7 +228,7 @@ defmodule Macaw.Component.ContractTest do
         name: %{type: :text}
       })
 
-    resolved = Slot.resolve(slot, schema, %{"value" => "v", "other" => "w"})
+    {:ok, resolved} = Slot.resolve(slot, schema, %{"value" => "v", "other" => "w"})
 
     assert resolve.([{{:role, "t"}, :desc}], resolved) == {:ok, [{"stamp", :desc}]}
     assert resolve.([{{:role, "when"}, :desc}], resolved) == {:ok, [{"stamp", :desc}]}

@@ -153,21 +153,37 @@ defmodule Macaw.Component.Slot do
   `many` role its list of fields. A `window` role left unbound holds the schema's window
   field, by `check/3`'s rule; an optional role left unbound is absent. This is the map a
   host puts in the context's `bindings` (spec/02 §2), so the core and every adopter
-  resolve a binding the same way. Fields `check/3` refuses raise `ArgumentError`.
+  resolve a binding the same way. `{:ok, resolved}`, or the faults `check/3` gives for
+  fields it refuses; `resolve!/3` raises there instead.
 
       iex> {:ok, slot} = Macaw.Component.Slot.new(%{requires: %{"x" => %{type: :time, window: true}, "y" => %{type: :number, many: true}, "label" => %{type: :text, optional: true}}})
       iex> schema = Macaw.Data.Schema.new!(%{t: %{type: :time}, v: %{type: :number}, w: %{type: :number}})
       iex> Macaw.Component.Slot.resolve(slot, schema, %{"y" => [:v, :w]})
-      %{"x" => "t", "y" => ["v", "w"]}
+      {:ok, %{"x" => "t", "y" => ["v", "w"]}}
   """
-  @spec resolve(t(), Schema.t(), map()) :: %{String.t() => String.t() | [String.t(), ...]}
+  @spec resolve(t(), Schema.t(), map()) ::
+          {:ok, %{String.t() => String.t() | [String.t(), ...]}} | {:error, [term(), ...]}
   def resolve(%{requires: requires} = slot, %Schema{} = schema, fields) when is_map(fields) do
-    case check(slot, schema, fields) do
-      :ok ->
+    with :ok <- check(slot, schema, fields) do
+      resolved =
         for {role, req} <- requires,
             {:ok, names} <- [bound(req, schema, Map.fetch(fields, role))],
             into: %{},
             do: {role, resolved(req, Enum.map(names, &to_string/1))}
+
+      {:ok, resolved}
+    end
+  end
+
+  @doc """
+  `resolve/3`'s map, for a binding the caller already checked. Raises `ArgumentError`
+  with `check/3`'s faults where `resolve/3` answers them.
+  """
+  @spec resolve!(t(), Schema.t(), map()) :: %{String.t() => String.t() | [String.t(), ...]}
+  def resolve!(slot, schema, fields) do
+    case resolve(slot, schema, fields) do
+      {:ok, resolved} ->
+        resolved
 
       {:error, faults} ->
         raise ArgumentError,

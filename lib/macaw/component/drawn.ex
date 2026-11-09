@@ -44,13 +44,13 @@ defmodule Macaw.Component.Drawn do
   @doc "The state of highest precedence among a list, `:live` for `[]`."
   @spec pick([t()]) :: t()
   def pick(states) when is_list(states) do
-    Enum.each(states, &state!/1)
+    Enum.each(states, &state/1)
     Enum.find(@states, :live, &(&1 in states))
   end
 
   @doc "The state's theme role, `nil` for `live`."
   @spec role(t()) :: atom() | nil
-  def role(state), do: Map.fetch!(@roles, state!(state))
+  def role(state) when state in @states, do: Map.fetch!(@roles, state)
 
   @doc "The glyph of the state's role's cue (`Macaw.Layers.Theme.cue/1`), `nil` for `live`."
   @spec glyph(t()) :: atom() | nil
@@ -63,7 +63,7 @@ defmodule Macaw.Component.Drawn do
 
   @doc "The state's words, `nil` for `live`."
   @spec words(t()) :: String.t() | nil
-  def words(state), do: Map.fetch!(@words, state!(state))
+  def words(state) when state in @states, do: Map.fetch!(@words, state)
 
   @doc """
   A static notice for a state other than `live`: a paragraph with the state's class and
@@ -104,11 +104,8 @@ defmodule Macaw.Component.Drawn do
   @spec stylesheet_url() :: String.t()
   def stylesheet_url, do: "/macaw_component/drawn.css"
 
-  defp state!(state) do
-    state in @states ||
-      raise ArgumentError,
-            "#{inspect(state)} is not a drawn state; the states are #{inspect(@states)}"
-
+  # A state is the functions' contract: an unknown one fails as any wrong call does.
+  defp state(state) when state in @states do
     state
   end
 end

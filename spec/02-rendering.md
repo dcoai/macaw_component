@@ -44,7 +44,7 @@ assigns are built from the six keys, a missing or unknown key is a fault, and a 
 - **`Context.heading(context, depth)`** is the heading element for a heading `depth` levels below the component's top (`0` for its top), `"h<level + depth>"`, never past `"h6"`, so a component never hard-codes a level.
 - **The binding arrives in the context.** The host computes `bindings` from the cell's binding of each slot, resolved by `Macaw.Component.Slot.resolve/3` (01 §1.3): an unbound `window` role holds the window field it reads, and an unbound optional role is absent, so a component never repeats the defaulting rule. A bad binding is a fault at its path under `[:bindings]`. **`Context.field(context, slot, role)`** answers the field bound to a role, the list of fields for a `many` role, or `nil` for a slot or role not bound. The rows keep the source's names; the component reads them by the bound field. This keeps §1 true: the binding reaches a component inside its context, and a contained component's `init/2` receives it too.
 - **The schema arrives in the context too.** The host puts each bound slot's described schema in `schemas` (on a page, the core, from the description the static pass checked the binding against), so a component heads a field in the schema's words: **`Context.label(context, slot, field)`** is the field's `label`, else its name; **`Context.unit(context, slot, field)`** its `unit` (a UCUM code), else `nil`. A slot without a schema, or a field its schema lacks, answers the name and `nil`, so a component never needs the schema to draw. A bad `schemas` is a fault under `[:schemas]`.
-- **`Context.id(context, local)`** is an element id unique to the instance, `"<instance>-<local>"`, `local` a non-empty string of letters, digits, `-` and `_`; so two instances never share an id and an id is stable across renders (§5).
+- **`Context.id(context, local)`** is an element id unique to the instance, `"<instance>-<local>"`, `local` a non-empty string of letters, digits, `-` and `_`, else `ArgumentError`: the local part is the component's own literal, so a wrong one is the component's bug, an invariant the raises allowlist names and the kit's `:ids` check finds (#33); so two instances never share an id and an id is stable across renders (§5).
 
 ```test:context-new
 a context defaults its font size, level, theme and preferences; every bad field is a fault at once; an unknown field is a fault
@@ -84,7 +84,7 @@ The modes and each mode's rules are `macaw_component`'s (macaw_compose#137): a c
 | `:live_regions` | yes | yes | no | no |
 | `:per_viewer` (markup that differs by viewer) | yes | yes | no | no |
 
-A socketless render keeps its hooks because it is also the first render of a live page: the hooks attach when the socket connects, and do nothing until then. An unknown mode or feature raises `ArgumentError`: it is a programming error, not data.
+A socketless render keeps its hooks because it is also the first render of a live page: the hooks attach when the socket connects, and do nothing until then. The mode and the feature are `Mode.allows?/2`'s contract, stated as guards: an unknown one fails as any wrong call does (`FunctionClauseError`), a programming error, not data (#33).
 
 ```test:modes-table
 all/0 is the four modes in order and allows?/2 answers the table for every mode and feature, raising for an unknown one
@@ -138,7 +138,7 @@ the kit finds each rule broken by a render that breaks it, and nothing in a rend
 How a host computes the state from deliveries and faults (a delivery's `capped` and `reduced_by`, its age against the source's continuity, a crashed process) is the host's.
 
 ```test:drawn-states
-all/0 is the eight in precedence order and pick/1 the highest of a list; every state but live has a role, a glyph and words; the static notice is never blank and is not a live region
+all/0 is the eight in precedence order and pick/1 the highest of a list, an unknown state a wrong call; every state but live has a role, a glyph and words; the static notice is never blank and is not a live region
 ```
 
 ```test:drawn-stylesheet
@@ -159,7 +159,7 @@ render(kind, assigns)            → markup     # assigns.value is the value
 
 - **The value is pure.** Equal inputs give equal values; a transition does no I/O, reads no clock and starts no process. Server work (a scene's simulation, a layout that takes time) is what the value computes, and its host decides where that runs.
 - **The process around the value is the host's:** under Macaw, `macaw_live`'s contained cell, heap-limited and restarted with a backoff, shown as `crashed` meanwhile; in an adopter's own host, whatever it uses (a LiveView's assigns, a test). The value never knows which. (visualize.md C13; dcotek_web.md C13.)
-- **The dispatch functions** `Macaw.Component.init/3`, `delivery/4`, `size/3` and `bound/4` call a contained component's transitions, refusing a `:pure` component with `ArgumentError`.
+- **The dispatch functions** `Macaw.Component.init/3`, `delivery/4`, `size/3` and `bound/4` call a contained component's transitions, refusing a `:pure` component with `ArgumentError`: the core calls them only on a module `contained?/1` holds for, so another is the caller's bug, an invariant the raises allowlist names (#33).
 
 ```test:contained-transitions
 a contained component's value moves through init, delivery, size and bound, and the dispatch functions refuse a pure component

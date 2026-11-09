@@ -219,7 +219,7 @@ defmodule Macaw.Component.RenderingTest do
       })
 
     schema = Macaw.Data.Schema.new!(%{t: %{type: :time}, in: %{type: :number}})
-    resolved = Macaw.Component.Slot.resolve(slot, schema, %{"y" => [:in]})
+    {:ok, resolved} = Macaw.Component.Slot.resolve(slot, schema, %{"y" => [:in]})
     ctx = context(bindings: %{"points" => resolved})
     assert Context.field(ctx, "points", "x") == "t"
     assert Context.field(ctx, "points", "y") == ["in"]
@@ -249,10 +249,11 @@ defmodule Macaw.Component.RenderingTest do
       refute Mode.allows?(:print, feature)
     end
 
-    # Unknown values arrive at runtime, from data the type checker can't see.
+    # The mode and the feature are the contract: an unknown one is a wrong call. (They
+    # arrive at runtime, so the type checker can't see them.)
     [paper, sound] = Enum.shuffle([:paper]) ++ Enum.shuffle([:sound])
-    assert_raise ArgumentError, ~r/not a mode/, fn -> Mode.allows?(paper, :hooks) end
-    assert_raise ArgumentError, ~r/not a feature/, fn -> Mode.allows?(:live, sound) end
+    assert_raise FunctionClauseError, fn -> Mode.allows?(paper, :hooks) end
+    assert_raise FunctionClauseError, fn -> Mode.allows?(:live, sound) end
   end
 
   @tag verifies: "drawn-stylesheet"
@@ -293,7 +294,10 @@ defmodule Macaw.Component.RenderingTest do
     assert Drawn.pick([:live, :capped]) == :capped
     assert Drawn.pick([:stale, :loading, :no_data]) == :loading
     assert Drawn.pick([:capped, :crashed]) == :crashed
-    assert_raise ArgumentError, fn -> Drawn.pick([:busy]) end
+    [busy] = Enum.shuffle([:busy])
+    assert_raise FunctionClauseError, fn -> Drawn.pick([busy]) end
+    assert_raise FunctionClauseError, fn -> Drawn.role(busy) end
+    assert_raise FunctionClauseError, fn -> Drawn.words(busy) end
 
     roles = for s <- Drawn.all(), into: %{}, do: {s, Drawn.role(s)}
 
