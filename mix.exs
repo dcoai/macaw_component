@@ -12,8 +12,17 @@ defmodule Macaw.Component.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      # A Hex package is built only from the clean, pushed release tag (dco-tek/macaw/macaw#190).
-      aliases: ["hex.publish": ["cmd elixir ci/release_guard.exs #{@version}", "hex.publish"]],
+      # A Hex package is built only from the clean, pushed release tag (dco-tek/macaw/macaw#190),
+      # with ci/'s copies of the family's scripts current (#27): the drift check stops the
+      # release on a copy that is edited, missing or behind, naming it. Path.expand, since
+      # mix cmd runs without a shell and would never expand a bare ~.
+      aliases: [
+        "hex.publish": [
+          "cmd elixir #{Path.expand("~/Projects/claude-tools/macaw_ci_drift.exs")} .",
+          "cmd elixir ci/release_guard.exs #{@version}",
+          "hex.publish"
+        ]
+      ],
       description:
         "Macaw's component contract: declarations, kinds, the context, rendering modes, drawn states and the component conformance kit.",
       source_url: @source_url,

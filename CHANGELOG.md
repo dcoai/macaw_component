@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `mix hex.publish` runs the family's drift check first (#38, #27): a `ci/` copy that is edited, missing or behind the reference stops the release, naming it.
 - A test holds the README's install pin to `mix.exs`'s version, and the status line no longer names one (#37, #26).
 - The kit's fixtures take `schemas` (#19): each slot's schema, a `%Macaw.Data.Schema{}` or its attrs, carried by every context the kit builds, so a component that reads units or labels through its context is checked as it draws. A bound delivery naming a schema version the fixture doesn't give is `{:no_schema, slot}` from the `:bindings` check, and one it gives another of `{:schema_mismatch, slot, given, delivered}`. A component whose fixtures bind deliveries that name their schema adds the schemas to them.
 - Errors are values is the library's rule (spec/00 §4, #34, #12), and CI runs the family's raises check (`ci/raises.exs`, with the reasoned allowlist `ci/raises_allowlist.exs`): a raise, throw or exit in `lib/` outside it fails the pipeline. Properties hold the readers to it over generated malformed input.
