@@ -526,3 +526,43 @@ defmodule Macaw.Component.Test.Ordered do
   @impl true
   def render(:content, assigns), do: Kit.drawn_or(assigns, "<p>Rows</p>")
 end
+
+defmodule Macaw.Component.Test.Honest.Units do
+  @moduledoc false
+  # A bound table that needs each value's unit to draw, as frio's outlook does (#19): it
+  # reads the unit from the slot's schema in its context, and with none it draws invalid
+  # rather than guess.
+  use Macaw.Component, name: "test.honest.units", kinds: [:content]
+  alias Macaw.Component.{Context, Drawn, Test.Kit}
+  alias Macaw.Data.{Delivery, Table}
+
+  @impl true
+  def declarations(_settings),
+    do: {:ok, slots: %{"points" => %{requires: %{"values" => %{type: :number, many: true}}}}}
+
+  @impl true
+  def render(:content, %{drawn: :live, context: ctx, deliveries: deliveries} = assigns) do
+    fields = Context.field(ctx, "points", "values")
+    units = Enum.map(fields, &Context.unit(ctx, "points", &1))
+
+    if nil in units do
+      Drawn.render(:invalid, ctx)
+    else
+      rows = deliveries |> Map.fetch!("points") |> Delivery.named_rows!()
+
+      Kit.drawn_or(
+        assigns,
+        ~s(<table><caption>Points</caption><thead><tr>) <>
+          Enum.map_join(Enum.zip(fields, units), "", fn {f, u} ->
+            ~s[<th scope="col">#{f} (#{u})</th>]
+          end) <>
+          "</tr></thead><tbody>" <>
+          Enum.map_join(rows, "", fn row ->
+            "<tr>" <> Enum.map_join(fields, "", &"<td>#{Table.get(row, &1)}</td>") <> "</tr>"
+          end) <> "</tbody></table>"
+      )
+    end
+  end
+
+  def render(:content, assigns), do: Kit.drawn_or(assigns, "")
+end

@@ -205,6 +205,14 @@ if Code.ensure_loaded?(LazyHTML) do
       do:
         "the delivery for #{inspect(slot)} can't be rebuilt with its fields renamed: #{inspect(faults)}"
 
+    defp words({:no_schema, slot}),
+      do:
+        "the delivery for #{inspect(slot)} names a schema version, but the fixture gives no schema for it: the check would see only the component's fallback"
+
+    defp words({:schema_mismatch, slot, given, delivered}),
+      do:
+        "the fixture's schema for #{inspect(slot)} is version #{String.slice(given, 0, 12)}, but its delivery was produced under #{String.slice(delivered, 0, 12)}"
+
     defp words({:ignores_binding, slot}),
       do: "does not read the fields bound in #{inspect(slot)} from the context's bindings"
 

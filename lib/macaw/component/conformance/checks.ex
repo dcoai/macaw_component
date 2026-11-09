@@ -8,7 +8,7 @@ if Code.ensure_loaded?(LazyHTML) do
     alias Macaw.Component
     alias Macaw.Component.{Context, Drawn, Mode}
     alias Macaw.Component.Conformance.{Html, Render}
-    alias Macaw.Data.{Delivery, Table}
+    alias Macaw.Data.{Delivery, Schema, Table}
 
     @composite_roles ~w(grid tree tablist listbox radiogroup toolbar)
     @color_attrs ~w(fill stroke color stop-color flood-color lighting-color)
@@ -157,6 +157,34 @@ if Code.ensure_loaded?(LazyHTML) do
     defp what(:bindings, module, opts) do
       {:ok, info} = Component.info(module)
 
+      schema_findings =
+        for fixture <- Keyword.fetch!(opts, :fixtures),
+            {slot, _roles} <- Enum.sort(fixture.bindings),
+            what <- schema_finding(fixture, slot),
+            do: {{fixture.name, nil, nil}, what}
+
+      schema_findings ++ bound_findings(module, info, opts)
+    end
+
+    # A bound slot whose delivery names the schema it was produced under is checked with
+    # that schema, as a host renders it: given, and the one the delivery names.
+    defp schema_finding(fixture, slot) do
+      with %Delivery{schema: version} when is_binary(version) <- fixture.deliveries[slot] do
+        case fixture.schemas[slot] do
+          nil ->
+            [{:no_schema, slot}]
+
+          schema ->
+            if Schema.version(schema) == version,
+              do: [],
+              else: [{:schema_mismatch, slot, Schema.version(schema), version}]
+        end
+      else
+        _ -> []
+      end
+    end
+
+    defp bound_findings(module, info, opts) do
       for fixture <- Keyword.fetch!(opts, :fixtures),
           fixture.bindings != %{},
           {:ok, settings, declarations} <- [Render.setup(module, fixture)],
@@ -575,13 +603,28 @@ if Code.ensure_loaded?(LazyHTML) do
         end)
 
       with {:ok, deliveries} <- rename_slot(fixture.deliveries, slot, renames),
+           {:ok, schemas} <- rename_schema(fixture.schemas, slot, renames),
            do:
              {:ok,
               %{
                 fixture
                 | deliveries: deliveries,
-                  bindings: Map.put(fixture.bindings, slot, roles)
+                  bindings: Map.put(fixture.bindings, slot, roles),
+                  schemas: schemas
               }}
+    end
+
+    # The slot's schema with its bound fields renamed too, so units and labels read by the
+    # renamed field are the ones the fixture gave (#19).
+    defp rename_schema(schemas, slot, renames) do
+      case Map.fetch(schemas, slot) do
+        {:ok, %Schema{fields: fields}} ->
+          with {:ok, renamed} <- Schema.new(rename_keys(fields, renames)),
+               do: {:ok, Map.put(schemas, slot, renamed)}
+
+        :error ->
+          {:ok, schemas}
+      end
     end
 
     defp rename_slot(deliveries, slot, renames) do

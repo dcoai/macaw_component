@@ -7,8 +7,9 @@ if Code.ensure_loaded?(LazyHTML) do
     alias Macaw.Component
     alias Macaw.Component.{Assigns, Context}
     alias Macaw.Component.Conformance.Html
+    alias Macaw.Data.Schema
 
-    @fixture_keys [:name, :settings, :deliveries, :events, :bindings]
+    @fixture_keys [:name, :settings, :deliveries, :events, :bindings, :schemas]
 
     @doc false
     # The fixtures with their defaults, and every fault by path under [:fixtures]: a
@@ -29,10 +30,12 @@ if Code.ensure_loaded?(LazyHTML) do
             settings: %{},
             deliveries: %{},
             events: [],
-            bindings: %{}
+            bindings: %{},
+            schemas: %{}
           }
 
-          {Map.merge(defaults, fixture), faults ++ unknown}
+          {schemas, schema_faults} = schemas(Map.get(fixture, :schemas, %{}), i)
+          {%{Map.merge(defaults, fixture) | schemas: schemas}, faults ++ unknown ++ schema_faults}
         else
           {nil, faults ++ [{[:fixtures, i], {:type, :map}}]}
         end
@@ -40,6 +43,28 @@ if Code.ensure_loaded?(LazyHTML) do
     end
 
     def fixtures(_other), do: {[], [{[:fixtures], {:type, {:list, :map}}}]}
+
+    # A fixture's schemas by slot, each a %Schema{} or the attrs Schema.new/1 builds one
+    # from; a schema that doesn't build is its faults under the slot.
+    defp schemas(schemas, i) when is_map(schemas) and not is_struct(schemas) do
+      Enum.reduce(schemas, {%{}, []}, fn
+        {slot, %Schema{} = schema}, {ok, faults} ->
+          {Map.put(ok, slot, schema), faults}
+
+        {slot, attrs}, {ok, faults} ->
+          case Schema.new(attrs) do
+            {:ok, schema} ->
+              {Map.put(ok, slot, schema), faults}
+
+            {:error, errors} ->
+              {ok,
+               faults ++
+                 for({path, why} <- errors, do: {[:fixtures, i, :schemas, slot | path], why})}
+          end
+      end)
+    end
+
+    defp schemas(_schemas, i), do: {%{}, [{[:fixtures, i, :schemas], {:type, :map}}]}
 
     @doc false
     # The faults of every fixture's context, under its index: bindings the context refuses,
@@ -80,7 +105,8 @@ if Code.ensure_loaded?(LazyHTML) do
           heading_level: 2,
           theme: Keyword.fetch!(opts, :theme),
           now: Keyword.fetch!(opts, :now),
-          bindings: fixture.bindings
+          bindings: fixture.bindings,
+          schemas: fixture.schemas
         ],
         overrides
       )

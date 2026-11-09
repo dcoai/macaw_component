@@ -366,6 +366,72 @@ defmodule Macaw.Component.ConformanceTest do
              ~s(order for "rows" can't be resolved by the fixture's bindings)
   end
 
+  @tag verifies: "kit-schemas"
+  test "a fixture's schemas reach the context; a bound delivery's schema must be given and match" do
+    attrs = %{v: %{type: :number, unit: "ms"}, w: %{type: :number, unit: "s"}}
+    schema = Macaw.Data.Schema.new!(attrs)
+    rows = [%{v: 1, w: 2}, %{v: 3, w: 4}]
+    delivery = Delivery.new!(rows, schema: Macaw.Data.Schema.version(schema))
+    bindings = %{"points" => %{"values" => ["v", "w"]}}
+    fixture = %{deliveries: %{"points" => delivery}, bindings: bindings}
+    units = Macaw.Component.Test.Honest.Units
+
+    # Given, as a struct or as attrs, every check sees the drawn table, units and all,
+    # the bindings check renaming the schema's fields with the delivery's.
+    for given <- [schema, attrs] do
+      opts = [fixtures: [Map.put(fixture, :schemas, %{"points" => given})], now: @now]
+      assert Conformance.check(units, opts) == []
+    end
+
+    # The component draws its table only with the schema; without, its invalid notice,
+    # which is all the checks saw before fixtures carried schemas.
+    draw = fn schemas ->
+      {:ok, ctx} =
+        Macaw.Component.Context.new(
+          mode: :live,
+          instance: "kit-a",
+          size: {640, 400},
+          heading_level: 2,
+          theme: Macaw.Layers.Theme.default(),
+          now: @now,
+          bindings: bindings,
+          schemas: schemas
+        )
+
+      units.render(:content, %{drawn: :live, context: ctx, deliveries: %{"points" => delivery}})
+      |> Phoenix.HTML.safe_to_string()
+    end
+
+    assert draw.(%{"points" => schema}) =~ "v (ms)"
+    refute draw.(%{}) =~ "<table>"
+
+    # A delivery that names its schema with none given, or another, is a finding.
+    assert Conformance.check(:bindings, units, fixtures: [fixture], now: @now) ==
+             [{:bindings, {{"fixture 1", nil, nil}, {:no_schema, "points"}}}]
+
+    other = Macaw.Data.Schema.new!(%{v: %{type: :number, unit: "ms"}, w: %{type: :number}})
+    mismatched = Map.put(fixture, :schemas, %{"points" => other})
+
+    assert [{:bindings, {_, {:schema_mismatch, "points", given, delivered}}} = finding] =
+             Conformance.check(:bindings, units, fixtures: [mismatched], now: @now)
+
+    assert given == Macaw.Data.Schema.version(other) and delivered == delivery.schema
+    assert Conformance.format(finding) =~ "its delivery was produced under"
+
+    # A delivery that names no schema is checked as it is.
+    unnamed = %{fixture | deliveries: %{"points" => Delivery.new!(rows)}}
+    assert Conformance.check(:bindings, units, fixtures: [unnamed], now: @now) == []
+
+    # Schemas that don't build are the fixture's fault, by path, before anything renders.
+    assert [{:kit, {{"options", nil, nil}, {[:fixtures, 0, :schemas, "points" | _], _}}} | _] =
+             Conformance.check(:kinds, units,
+               fixtures: [Map.put(fixture, :schemas, %{"points" => %{v: %{type: :nope}}})]
+             )
+
+    assert Conformance.check(:kinds, units, fixtures: [Map.put(fixture, :schemas, [])]) ==
+             [{:kit, {{"options", nil, nil}, {[:fixtures, 0, :schemas], {:type, :map}}}}]
+  end
+
   @tag verifies: "kit-bindings"
   test "the bindings check passes a component that reads its fields from the context, and finds one that doesn't" do
     assert Conformance.check(Honest.Bound, @bound) == []
