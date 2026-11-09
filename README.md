@@ -10,7 +10,7 @@ Macaw's component contract: what a component declares, the kinds it renders as, 
 
 A component package (visualize's visuals, metresis's panels, the core's built-in components) implements this contract **without the Macaw core**: `macaw_component` holds no process, no state source and no page. Placing components on pages is the core's, `macaw`.
 
-**Status:** v0.7.0. The contract is **unstable until two implementers pass its kit**, the core's table and visualize's visuals; until then every 0.x minor version may change it, and changes found by an implementer are proposals on dco-tek/macaw_compose.
+**Status:** the contract is **unstable until two implementers pass its kit**, the core's table and visualize's visuals; until then every 0.x minor version may change it, and changes found by an implementer are proposals on dco-tek/macaw_compose.
 
 | Module | What it is | Spec |
 |---|---|---|
