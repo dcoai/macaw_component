@@ -7,7 +7,8 @@ Every component runs **one kit**, `Macaw.Component.Conformance`: the contract of
 **Two layers**, as in the source kit ([macaw_data 01 §9](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-conformance)):
 - `check(check, component, opts)` answers one check's **findings**, `{check, {where, what}}` terms, `[]` for a component that passes: `where` is the fixture's name and the kind and mode the render was made in (`nil` where none applies), and `what` the rule broken; `check(component, opts)` runs every check of `checks/0`, then those of each check set in `check_sets:`; `format/1` words a finding as a line a person reads.
 - `use Macaw.Component.Conformance, component: …` inside a module that uses `ExUnit.Case` writes one test per check, in a `describe` block, failing with the findings. The kit references no ExUnit function itself (`describe`, `test` and `flunk` appear only in the code `use` writes), so it loads in production.
-- `use` refuses a missing `component:` and an unknown option at compile time; `check/3` refuses an unknown check and an unknown option with `ArgumentError`.
+- `use` refuses a missing `component:`, an unknown option and an unknown check set at compile time.
+- **The kit's misuse is a finding, never a raise** (#12, #32): `check/2` and `check/3` judge their arguments before anything renders, and answer every misuse as `{:kit, {{"options", nil, nil}, fault}}`, a fault by path: an unknown check, `{:enum, checks}` at `[:check]`; a module that isn't a component, `:not_a_component` at `[:component]`; an unknown option, `:unknown_key` at its key; a check set that isn't one, `{:enum, sets}` at `[:check_sets, i]`; fixtures that aren't a non-empty list, `{:type, {:list, :map}}` at `[:fixtures]`, a fixture that is no map, `{:type, :map}` at `[:fixtures, i]`, a key no fixture takes, `:unknown_key` at `[:fixtures, i, key]`; and bindings the context refuses, the context's faults under `[:fixtures, i]`. A test using the kit fails with every one named; `format/1` words it as `kit: path: words`.
 
 **The kit reads renders as HTML** with `lazy_html`, an optional dependency (00 §2): the module is compiled only when `LazyHTML` is loaded.
 
@@ -23,7 +24,7 @@ an honest component passes every check; check/3 answers one check's findings and
 ```
 
 ```test:kit-use
-use writes one test per check into a describe block, refuses a missing component and an unknown option at compile time, and an unknown check or option is refused
+use writes one test per check into a describe block, refuses a missing component and an unknown option at compile time; an unknown check, option or check set, a module that isn't a component, bad fixtures and bindings the context refuses are each a kit finding by path, all at once, never a raise
 ```
 
 ## 2. The checks {#components-kit-checks}
@@ -76,15 +77,15 @@ A component whose declarations depend on its settings ships **a fixture set**, o
 - `events`: the event names the fixture's interaction produces, checked as declared, `[]` by default;
 - `bindings`: the cell's resolved bindings, in the shape of the context's `bindings` (02 §2), `%{}` by default. Every context the kit builds for the fixture carries them, so every check renders with them, and the `:bindings` check probes them.
 
-An unknown key is refused with `ArgumentError`.
+An unknown key, and a fixture that is no map, is a kit finding at its path (§1).
 
 ```test:kit-fixtures
-the kit runs every fixture and names a finding by its fixture; defaults fill a bare fixture, and an unknown key is refused
+the kit runs every fixture and names a finding by its fixture; defaults fill a bare fixture, and an unknown key or a fixture that is no map is a kit finding at its path
 ```
 
 ## 4. Check sets {#components-kit-sets}
 
-A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order; an unknown set raises `ArgumentError`. A set's checks run after `checks/0`'s, for each fixture, and their findings are shaped like any other's.
+A **check set** adds checks for a family of components. `check_sets/0` lists the sets, and `checks(set)` a set's checks, in order, `{:ok, checks}`; an unknown set is `{:error, [{[], {:enum, sets}}]}`. A set's checks run after `checks/0`'s, for each fixture, and their findings are shaped like any other's.
 
 **The visual check set**, `:visual`, for components that draw data (visualize's visuals):
 

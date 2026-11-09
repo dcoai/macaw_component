@@ -160,7 +160,7 @@ if Code.ensure_loaded?(LazyHTML) do
       for fixture <- Keyword.fetch!(opts, :fixtures),
           fixture.bindings != %{},
           {:ok, settings, declarations} <- [Render.setup(module, fixture)],
-          # Bindings the context refuses raise here, before they are read.
+          # The options refused bindings the context refuses, before anything rendered.
           %Context{} <- [Render.context(opts, fixture)],
           tokens = binding_tokens(fixture.bindings),
           {slot, roles} <- Enum.sort(fixture.bindings),

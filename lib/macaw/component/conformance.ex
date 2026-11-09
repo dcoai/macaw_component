@@ -20,6 +20,13 @@ if Code.ensure_loaded?(LazyHTML) do
 
     A check runs the component's callbacks in the caller's process: a raise is the test's
     failure, with its stacktrace.
+
+    **The kit's misuse is a finding, never a raise** (#12, #32): an unknown option, check
+    set or check, a module that isn't a component, and fixtures that aren't a non-empty
+    list of maps of fixture keys, or whose bindings the context refuses, are
+    `{:kit, {{"options", nil, nil}, fault}}`, a fault by option path, every one, judged
+    before anything renders. `use` refuses a missing `component:` or an unknown option
+    while the test compiles.
     """
 
     alias Macaw.Component.Conformance.{Checks, Render, Visual}
@@ -63,65 +70,94 @@ if Code.ensure_loaded?(LazyHTML) do
     @spec check_sets() :: [atom()]
     def check_sets, do: Enum.map(@sets, &elem(&1, 0))
 
-    @doc "A check set's checks, in order."
-    @spec checks(atom()) :: [atom(), ...]
+    @doc """
+    A check set's checks, in order: `{:ok, checks}`, or `{:enum, sets}` for a name that is
+    no check set.
+
+        iex> Macaw.Component.Conformance.checks(:audio)
+        {:error, [{[], {:enum, [:visual]}}]}
+    """
+    @spec checks(atom()) :: {:ok, [atom(), ...]} | {:error, [Macaw.Layers.Fault.t(), ...]}
     def checks(set) do
       case List.keyfind(@sets, set, 0) do
-        {^set, checks} ->
-          checks
-
-        nil ->
-          raise ArgumentError,
-                "#{inspect(set)} is not a check set; the sets are #{inspect(check_sets())}"
+        {^set, checks} -> {:ok, checks}
+        nil -> {:error, [{[], {:enum, check_sets()}}]}
       end
     end
 
     @doc "Every check, then each check set's in `check_sets:`, over a component."
     @spec check(module(), keyword()) :: [finding()]
     def check(component, opts) when is_atom(component) and is_list(opts) do
-      opts = options!(opts)
-      sets = Enum.flat_map(Keyword.fetch!(opts, :check_sets), &checks/1)
-      Enum.flat_map(@checks ++ sets, &run(&1, component, opts))
+      with {:ok, opts} <- options(opts, component, []) do
+        sets = Enum.flat_map(Keyword.fetch!(opts, :check_sets), &(&1 |> checks() |> elem(1)))
+        Enum.flat_map(@checks ++ sets, &run(&1, component, opts))
+      end
     end
 
     @doc "One check's findings over a component."
     @spec check(atom(), module(), keyword()) :: [finding()]
     def check(check, component, opts) when is_atom(check) and is_list(opts) do
-      (check in @checks or Enum.any?(@sets, fn {_set, checks} -> check in checks end)) ||
-        raise ArgumentError,
-              "#{inspect(check)} is not a check; the checks are #{inspect(@checks)}"
+      known? = check in @checks or Enum.any?(@sets, fn {_set, checks} -> check in checks end)
+      unknown = if known?, do: [], else: [{[:check], {:enum, all_checks()}}]
 
-      run(check, component, options!(opts))
+      with {:ok, opts} <- options(opts, component, unknown), do: run(check, component, opts)
     end
 
-    defp run(check, component, opts) do
-      Macaw.Component.component?(component) ||
-        raise ArgumentError, "#{inspect(component)} is not a component"
+    defp all_checks, do: @checks ++ Enum.flat_map(@sets, &elem(&1, 1))
 
+    defp run(check, component, opts) do
       if check in Visual.checks(),
         do: check |> Visual.run(component, opts) |> Enum.uniq() |> Enum.map(&{check, &1}),
         else: Checks.run(check, component, opts)
     end
 
-    defp options!(opts) do
-      for {key, _} <- opts, key not in @options do
-        raise ArgumentError, "unknown option #{inspect(key)}; the kit takes #{inspect(@options)}"
-      end
+    # The options, every fault at once, or the kit's findings: nothing renders before.
+    defp options(opts, component, faults) do
+      unknown = for {key, _} <- opts, key not in @options, do: {[key], :unknown_key}
+
+      component =
+        if Macaw.Component.component?(component),
+          do: [],
+          else: [{[:component], :not_a_component}]
 
       sets = Keyword.get(opts, :check_sets, [])
-      Enum.each(sets, &checks/1)
 
-      [
-        fixtures: Render.fixtures(Keyword.get(opts, :fixtures, [%{}])),
+      set_faults =
+        if is_list(sets),
+          do:
+            for(
+              {set, i} <- Enum.with_index(sets),
+              match?({:error, _}, checks(set)),
+              do: {[:check_sets, i], {:enum, check_sets()}}
+            ),
+          else: [{[:check_sets], {:type, :list}}]
+
+      {fixtures, fixture_faults} = Render.fixtures(Keyword.get(opts, :fixtures, [%{}]))
+
+      opts = [
+        fixtures: fixtures,
         check_sets: sets,
         theme: Keyword.get_lazy(opts, :theme, &Macaw.Layers.Theme.default/0),
         size: Keyword.get(opts, :size, {640, 400}),
         now: Keyword.get_lazy(opts, :now, fn -> DateTime.utc_now() end)
       ]
+
+      context = if fixture_faults == [], do: Render.context_faults(opts), else: []
+
+      case faults ++ unknown ++ component ++ set_faults ++ fixture_faults ++ context do
+        [] ->
+          {:ok, opts}
+
+        faults ->
+          faults |> Macaw.Layers.Fault.sort() |> Enum.map(&{:kit, {{"options", nil, nil}, &1}})
+      end
     end
 
     @doc "A finding as a line a person reads."
     @spec format(finding()) :: String.t()
+    def format({:kit, {{"options", nil, nil}, fault}}),
+      do: "kit: " <> Macaw.Layers.Fault.format(fault, root: "options", words: &kit_words/1)
+
     def format({check, {{fixture, kind, mode}, what}}) do
       where =
         [fixture, kind && inspect(kind), mode && to_string(mode)]
@@ -174,6 +210,9 @@ if Code.ensure_loaded?(LazyHTML) do
 
     defp words(other), do: inspect(other)
 
+    defp kit_words(:not_a_component), do: "is not a component: it doesn't use Macaw.Component"
+    defp kit_words(other), do: inspect(other)
+
     @doc """
     Writes one test per check, then per check of each set in `check_sets:`, in a
     `describe` block, each failing with its findings. Takes `component:` (required) and the
@@ -190,7 +229,20 @@ if Code.ensure_loaded?(LazyHTML) do
 
       quote bind_quoted: [component: component, opts: opts, checks: @checks] do
         sets = Keyword.get(opts, :check_sets, [])
-        all = checks ++ Enum.flat_map(sets, &Macaw.Component.Conformance.checks/1)
+
+        all =
+          checks ++
+            Enum.flat_map(sets, fn set ->
+              case Macaw.Component.Conformance.checks(set) do
+                {:ok, set_checks} ->
+                  set_checks
+
+                {:error, _faults} ->
+                  raise ArgumentError,
+                        "#{inspect(set)} is not a check set; the sets are " <>
+                          inspect(Macaw.Component.Conformance.check_sets())
+              end
+            end)
 
         @macaw_component component
         @macaw_opts opts

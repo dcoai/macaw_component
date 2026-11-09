@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** the conformance kit answers its misuse as findings, never a raise (#32, #12). `check/2` and `check/3` judge their arguments before anything renders and answer every misuse as `{:kit, {{"options", nil, nil}, fault}}`, a fault by path: an unknown check (`{:enum, checks}` at `[:check]`), a module that isn't a component (`:not_a_component` at `[:component]`), an unknown option (`:unknown_key`), an unknown check set (`{:enum, sets}` at `[:check_sets, i]`), fixtures that aren't a non-empty list of maps of fixture keys, and bindings the context refuses (under `[:fixtures, i]`), where each raised `ArgumentError`. A test using the kit fails with every one named; `format/1` words them. `checks/1` answers `{:ok, checks}`, an unknown set `{:error, [{[], {:enum, sets}}]}`: a caller of `checks(set)` matches `{:ok, checks}`. `use` still refuses a missing `component:`, an unknown option and an unknown check set while the test compiles.
+
 ## v0.7.0 (2026-11-05)
 
 **On macaw_data 0.13** (#30, #31). This release is breaking only for an adopter pinning macaw_data `~> 0.12`. macaw_component's own API is unchanged, and one kit check finds more.

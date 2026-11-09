@@ -28,7 +28,7 @@ defmodule Macaw.Component.VisualTest do
   @tag verifies: "kit-visual"
   test "an honest visual passes every check and the visual set" do
     assert Conformance.check_sets() == [:visual]
-    assert Conformance.checks(:visual) == [:image, :table, :tab_stop, :token, :svg]
+    assert Conformance.checks(:visual) == {:ok, [:image, :table, :tab_stop, :token, :svg]}
     assert visual("none") == []
   end
 

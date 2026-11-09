@@ -69,7 +69,8 @@ defmodule Macaw.Component.ConformanceTest do
 
     assert Conformance.check_sets() == [:visual]
     [set] = Enum.shuffle([:audio])
-    assert_raise ArgumentError, ~r/not a check set/, fn -> Conformance.checks(set) end
+    assert Conformance.checks(set) == {:error, [{[], {:enum, [:visual]}}]}
+    assert {:ok, [_ | _]} = Conformance.checks(:visual)
 
     for {component, opts} <- @honest do
       assert Conformance.check(component, opts) == [], inspect(component)
@@ -151,21 +152,32 @@ defmodule Macaw.Component.ConformanceTest do
     [check, option, set] =
       Enum.shuffle([:loudness]) ++ Enum.shuffle([:speed]) ++ Enum.shuffle([:audio])
 
-    assert_raise ArgumentError, ~r/not a check/, fn ->
-      Conformance.check(check, Honest.Menu, [])
-    end
+    # The kit's misuse is a finding by option path, every one, before anything renders.
+    kit = &{:kit, {{"options", nil, nil}, &1}}
 
-    assert_raise ArgumentError, ~r/unknown option/, fn ->
-      Conformance.check(Honest.Menu, [{option, 1}])
-    end
+    assert [{:kit, {{"options", nil, nil}, {[:check], {:enum, all}}}}] =
+             Conformance.check(check, Honest.Menu, [])
 
-    assert_raise ArgumentError, ~r/not a check set/, fn ->
-      Conformance.check(Honest.Menu, check_sets: [set])
-    end
+    assert :kinds in all and :image in all
 
-    assert_raise ArgumentError, ~r/not a component/, fn ->
-      Conformance.check(:kinds, String, [])
-    end
+    assert Conformance.check(Honest.Menu, [{option, 1}]) == [kit.({[option], :unknown_key})]
+
+    assert Conformance.check(Honest.Menu, check_sets: [:visual, set]) ==
+             [kit.({[:check_sets, 1], {:enum, [:visual]}})]
+
+    assert Conformance.check(:kinds, String, []) == [kit.({[:component], :not_a_component})]
+
+    assert Conformance.check(check, String, [{option, 1}]) == [
+             kit.({[:check], {:enum, all}}),
+             kit.({[:component], :not_a_component}),
+             kit.({[option], :unknown_key})
+           ]
+
+    assert Conformance.format(kit.({[:component], :not_a_component})) ==
+             "kit: component: is not a component: it doesn't use Macaw.Component"
+
+    assert Conformance.format(kit.({[option], :unknown_key})) ==
+             "kit: speed: is not a key of this node"
   end
 
   defp optional(reads),
@@ -267,13 +279,20 @@ defmodule Macaw.Component.ConformanceTest do
 
     assert Conformance.check(:kinds, Honest.Menu, fixtures: [%{}], now: @now) == []
 
-    assert_raise ArgumentError, ~r/:setting is not a fixture key/, fn ->
-      Conformance.check(:kinds, Honest.Menu, fixtures: [%{setting: %{}}])
-    end
+    kit = &{:kit, {{"options", nil, nil}, &1}}
 
-    assert_raise ArgumentError, ~r/non-empty list/, fn ->
-      Conformance.check(:kinds, Honest.Menu, fixtures: [])
-    end
+    assert Conformance.check(:kinds, Honest.Menu, fixtures: [%{}, %{setting: %{}}, :nope]) ==
+             [
+               kit.({[:fixtures, 1, :setting], :unknown_key}),
+               kit.({[:fixtures, 2], {:type, :map}})
+             ]
+
+    for bad <- [[], %{}, nil],
+        do:
+          assert(
+            Conformance.check(:kinds, Honest.Menu, fixtures: bad) ==
+              [kit.({[:fixtures], {:type, {:list, :map}}})]
+          )
   end
 
   @tag verifies: "kind-rules"
@@ -410,11 +429,11 @@ defmodule Macaw.Component.ConformanceTest do
 
     assert Conformance.check(:bindings, Honest.Scene, scene) == []
 
-    assert_raise ArgumentError, ~r/does not make a context/, fn ->
-      Conformance.check(:bindings, Honest.Bound,
-        fixtures: [%{bindings: %{"points" => %{"label" => ""}}}],
-        now: @now
-      )
-    end
+    # Bindings the context refuses are the fixture's fault, named before anything renders.
+    assert [{:kit, {{"options", nil, nil}, {[:fixtures, 0, :bindings | _], _}}} | _] =
+             Conformance.check(:bindings, Honest.Bound,
+               fixtures: [%{bindings: %{"points" => %{"label" => ""}}}],
+               now: @now
+             )
   end
 end

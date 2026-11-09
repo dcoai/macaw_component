@@ -11,29 +11,46 @@ if Code.ensure_loaded?(LazyHTML) do
     @fixture_keys [:name, :settings, :deliveries, :events, :bindings]
 
     @doc false
-    # The fixtures with their defaults; an unknown key raises ArgumentError.
-    @spec fixtures([map()]) :: [map()]
+    # The fixtures with their defaults, and every fault by path under [:fixtures]: a
+    # fixture that is no map, a key no fixture takes.
+    @spec fixtures(term()) :: {[map()], [Macaw.Layers.Fault.t()]}
     def fixtures(fixtures) when is_list(fixtures) and fixtures != [] do
       fixtures
-      |> Enum.with_index(1)
-      |> Enum.map(fn {fixture, i} ->
-        (is_map(fixture) and not is_struct(fixture)) ||
-          raise ArgumentError, "a fixture is a map, got #{inspect(fixture)}"
+      |> Enum.with_index()
+      |> Enum.map_reduce([], fn {fixture, i}, faults ->
+        if is_map(fixture) and not is_struct(fixture) do
+          unknown =
+            for key <- Map.keys(fixture),
+                key not in @fixture_keys,
+                do: {[:fixtures, i, key], :unknown_key}
 
-        for key <- Map.keys(fixture), key not in @fixture_keys do
-          raise ArgumentError,
-                "#{inspect(key)} is not a fixture key; a fixture takes #{inspect(@fixture_keys)}"
+          defaults = %{
+            name: "fixture #{i + 1}",
+            settings: %{},
+            deliveries: %{},
+            events: [],
+            bindings: %{}
+          }
+
+          {Map.merge(defaults, fixture), faults ++ unknown}
+        else
+          {nil, faults ++ [{[:fixtures, i], {:type, :map}}]}
         end
-
-        Map.merge(
-          %{name: "fixture #{i}", settings: %{}, deliveries: %{}, events: [], bindings: %{}},
-          fixture
-        )
       end)
     end
 
-    def fixtures(other),
-      do: raise(ArgumentError, "fixtures: is a non-empty list of maps, got #{inspect(other)}")
+    def fixtures(_other), do: {[], [{[:fixtures], {:type, {:list, :map}}}]}
+
+    @doc false
+    # The faults of every fixture's context, under its index: bindings the context refuses,
+    # judged before anything renders, so `context/3` never meets one.
+    @spec context_faults(keyword()) :: [Macaw.Layers.Fault.t()]
+    def context_faults(opts) do
+      for {fixture, i} <- Enum.with_index(Keyword.fetch!(opts, :fixtures)),
+          {:error, faults} <- [Context.new(attrs(opts, fixture, []))],
+          {path, reason} <- faults,
+          do: {[:fixtures, i | path], reason}
+    end
 
     @doc false
     # A fixture's validated settings and declarations, or the faults that stop rendering it.
@@ -46,32 +63,27 @@ if Code.ensure_loaded?(LazyHTML) do
     end
 
     @doc false
-    # A fixture's context, carrying its bindings; bindings the context refuses raise
-    # ArgumentError, a fault in the fixture.
+    # A fixture's context, carrying its bindings. The options judged them first
+    # (`context_faults/1`), and a mode is any of the four, so the context always builds.
     @spec context(keyword(), map(), keyword()) :: Context.t()
     def context(opts, fixture, overrides \\ []) do
-      attrs =
-        Keyword.merge(
-          [
-            mode: :live,
-            instance: "kit-a",
-            size: Keyword.fetch!(opts, :size),
-            heading_level: 2,
-            theme: Keyword.fetch!(opts, :theme),
-            now: Keyword.fetch!(opts, :now),
-            bindings: fixture.bindings
-          ],
-          overrides
-        )
+      {:ok, context} = Context.new(attrs(opts, fixture, overrides))
+      context
+    end
 
-      case Context.new(attrs) do
-        {:ok, context} ->
-          context
-
-        {:error, faults} ->
-          raise ArgumentError,
-                "#{fixture.name} does not make a context: #{inspect(faults)}"
-      end
+    defp attrs(opts, fixture, overrides) do
+      Keyword.merge(
+        [
+          mode: :live,
+          instance: "kit-a",
+          size: Keyword.fetch!(opts, :size),
+          heading_level: 2,
+          theme: Keyword.fetch!(opts, :theme),
+          now: Keyword.fetch!(opts, :now),
+          bindings: fixture.bindings
+        ],
+        overrides
+      )
     end
 
     @doc false
