@@ -70,6 +70,15 @@ spec-links:
     - elixir ci/spec_links.exs --self-test
     - elixir ci/spec_links.exs
 
+# Errors are values (spec/00 §4, #12): no raise, throw or exit in lib/ outside the
+# reasoned allowlist ci/raises_allowlist.exs (ci/raises.exs, the family's copy,
+# dco-tek/macaw/macaw#243).
+raises:
+  image: $ELIXIR_IMAGE
+  stage: check
+  script:
+    - elixir ci/raises.exs
+
 test:
   extends: .elixir
   stage: test
