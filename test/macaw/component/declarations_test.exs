@@ -4,7 +4,7 @@ defmodule Macaw.Component.DeclarationsTest do
 
   alias Macaw.Component
   alias Macaw.Component.{Announcement, Declarations, Proxy, Stylesheet}
-  alias Macaw.Component.Test.{Scene, Uncontained}
+  alias Macaw.Component.Test.{Broken, Honest, Scene, Uncontained}
 
   doctest Declarations
   doctest Announcement
@@ -20,6 +20,7 @@ defmodule Macaw.Component.DeclarationsTest do
              :writes,
              :local,
              :events,
+             :actions,
              :announces,
              :observes,
              :shortcuts,
@@ -38,6 +39,7 @@ defmodule Macaw.Component.DeclarationsTest do
              writes: %{},
              local: %{},
              events: [],
+             actions: [],
              announces: [],
              observes: [],
              shortcuts: [],
@@ -105,6 +107,66 @@ defmodule Macaw.Component.DeclarationsTest do
     assert {:ok, _} = new(events: [name], slots: %{name => %{}}, local: %{name => :time})
     assert {:error, _} = new(observes: [name])
     assert_raise ArgumentError, fn -> String.to_existing_atom(name) end
+  end
+
+  @tag verifies: "events-actions"
+  test "default actions: names as strings, kept in order, every fault at its path at once" do
+    actions = [
+      %{on: :sort, set: "emphasis", value: {:event, [:value, "sort"]}},
+      %{on: "sort", set: :emphasis, value: {:event, :identity}}
+    ]
+
+    assert {:ok, d} = Declarations.new([events: ["sort"], actions: actions], Honest.Prose)
+
+    assert d.actions == [
+             %{on: "sort", set: "emphasis", value: {:event, [:value, "sort"]}},
+             %{on: "sort", set: "emphasis", value: {:event, :identity}}
+           ]
+
+    assert {:ok, %{actions: []}} = new([])
+
+    assert {:error, faults} =
+             Declarations.new(
+               [
+                 events: ["sort"],
+                 actions: [
+                   %{on: "ghost", set: "nope", value: {:event, :time}},
+                   %{on: "sort", set: "flaw", value: {:event, [:row, ""]}, also: 1},
+                   %{set: "mood"},
+                   "sort"
+                 ]
+               ],
+               Broken
+             )
+
+    assert faults == [
+             {[:actions, 0, :on], {:undeclared, "ghost"}},
+             {[:actions, 0, :set], {:unknown_param, "nope"}},
+             {[:actions, 0, :value], {:not_an_event_path, {:event, :time}}},
+             {[:actions, 1, :also], :unknown_key},
+             {[:actions, 1, :set], {:not_bindable, "flaw"}},
+             {[:actions, 1, :value], {:not_an_event_path, {:event, [:row, ""]}}},
+             {[:actions, 2, :on], :required},
+             {[:actions, 2, :value], :required},
+             {[:actions, 3], {:not_a_map, "sort"}}
+           ]
+
+    assert {:error, [{[:actions], {:not_a_list, %{}}}]} = new(actions: %{})
+
+    # With no module, the parameters aren't checked, as for isolation.
+    assert {:ok, _} =
+             new(events: ["sort"], actions: [%{on: "sort", set: "x", value: {:event, :value}}])
+
+    assert Declarations.event_paths() == [
+             {:event, :value},
+             {:event, [:value, "key"]},
+             {:event, :identity},
+             {:event, [:identity, "field"]},
+             {:event, [:row, "field"]}
+           ]
+
+    assert Enum.all?(Declarations.event_paths(), &Declarations.event_path?/1)
+    refute Declarations.event_path?({:event, [:value, :sort]})
   end
 
   @tag verifies: "events-unique"

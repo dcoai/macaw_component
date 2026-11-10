@@ -197,6 +197,11 @@ defmodule Macaw.Component.ConformanceTest do
   test "each check is failed by a component built to break it, naming the rule" do
     finds?("impure", :declarations, &(&1 == :impure))
     finds?("reads_bindable", :declarations, &match?({:reads_bindable, "mood"}, &1))
+
+    finds?("bad_action", :declarations, fn what ->
+      match?({:declarations, [{[:actions, 0, :set], {:not_bindable, "flaw"}}]}, what)
+    end)
+
     finds?("canvas", :modes, &(&1 == :canvas))
     finds?("empty", :modes, &(&1 == :empty))
     finds?("hook_everywhere", :modes, &match?({:hook, _}, &1))

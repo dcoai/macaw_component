@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **New: default actions** (#22, #40, spec/01 §1.6). A component declares `actions`, each `%{on: event, set: parameter, value: {:event, path}}`: what its events do when its placement says nothing, each setting one of its own bindable parameters from one of the five event paths, `Declarations.event_paths/0` (macaw spec/03 §1.3). `Declarations.new/2` judges them, every fault at once under `[:actions, i]`. The default is `[]`, so a component that declares none is unchanged; `keys/0` is fourteen, `actions` after `events`. The kit's `:declarations` check finds a component whose actions are refused.
+
 ## v0.8.0 (2026-11-10)
 
 **Errors are values, on macaw_layers 0.5 and macaw_data 0.14** (#12). This release is breaking: a failure in macaw_component is now answered as a value, and a raise has to be asked for by name. It is also breaking for an adopter pinning macaw_layers `~> 0.4` or macaw_data `~> 0.13`.

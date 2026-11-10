@@ -116,6 +116,7 @@ declarations/2 calls declarations/1 with every bindable parameter at its default
 | **`writes`** | the **standard** state sources it writes, each with the value type it writes (§1.5) | `%{}` | interaction without wiring ([macaw_compose 03](https://github.com/dcoai/macaw/blob/main/spec/03-state.md)) |
 | **`local`** | the `:local` keys it shares on the client bus, each with its domain type (§1.5) | `%{}` | shared hover and brush without the server |
 | **`events`** | the names of the events it emits (§1.6) | `[]` | accurate view paths; cell actions |
+| **`actions`** | its default actions: each sets one of its bindable parameters from a field of one of its events (§1.6) | `[]` | interaction that works with no wiring in the document |
 | **`announces`** | the names of the announcements it may request (§1.6) | `[]` | one coordinated announcer |
 | **`observes`** | what it can observe, a subset of the closed vocabulary (§1.6) | `[]` | disclosure that matches (dcotek_web.md C3, C12) |
 | **`shortcuts`** | the page shortcuts it offers (§1.6) | `[]` | page-wide keys under the viewer's control (WCAG 2.1.4) |
@@ -133,7 +134,7 @@ The static declarations (§1) and the render (02) complete what a component decl
 **`declarations/1` is pure:** no I/O, no clock, no process. Equal settings give equal declarations. Because it runs at validation, the page DAG, the CSP plan, the observation plan and every budget ceiling exist before anything renders. The kit checks purity by calling it twice per fixture (04 §2).
 
 ```test:declares-defaults
-an empty answer builds the defaults of every key, keys/0 is the thirteen in order, and a keyword list and a map build the same declarations
+an empty answer builds the defaults of every key, keys/0 is the fourteen in order, and a keyword list and a map build the same declarations
 ```
 
 ```test:declares-faults
@@ -257,6 +258,15 @@ conforms?/2 accepts each type's values and refuses others: identities scalar or 
 **Observation.** `observes` is a subset of the closed vocabulary, `Macaw.Component.observations/0`: `view`, `dwell`, `hover_item`, `focus_item`, `activate`, `select`, `brush`, `copy` and `scroll_into_view`, in that order, given as atoms or their spellings and kept as atoms from the vocabulary. **Nothing is emitted unless the host enables it**, so a component used without a host plan reports nothing ([macaw_compose 10 §5](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-observation)).
 
 **Shortcuts.** `shortcuts` lists the page-wide shortcuts the component offers, each `%{key, action, description}`: `key` a `KeyboardEvent.key` value (a single printable character, or a named key such as `"ArrowUp"`), `action` a name, `description` a non-empty string for the help dialog. Two shortcuts on one key in one component are `{:duplicate_key, key}`. The page accepts or drops each, refuses two on one key across a page, and lets the viewer turn off or remap every single-character one; that registry is the host's. **Key bindings that aren't page-wide are focus-scoped** and need no declaration.
+
+**Default actions.** `actions` says what the component's events do when its placement says nothing: each `%{on: event, set: parameter, value: {:event, path}}` sets one of its own **bindable** parameters (§1.1) from a field of one of its events. **A component still never decides what an event means:** the placement does, and these are defaults it overrides ([macaw_compose 03 §1.3](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-actions)). The host names and holds the state each one binds; the component names none. They are data, not a callback, so a host, a builder and the kit can read them.
+- **The event paths** are the five fields of an event an action may read, `Declarations.event_paths/0`, the list macaw_compose 03 §1.3 takes: `{:event, :value}`, `{:event, [:value, key]}` (an entry of a map value), `{:event, :identity}`, `{:event, [:identity, field]}` and `{:event, [:row, field]}`, `key` and `field` non-empty strings.
+- **An event that must change two values carries both.** A sort button that flips the order on a second click renders the next `{sort, order}` as its value, and two actions set each from `[:value, "sort"]` and `[:value, "order"]`: no action looks at the current state.
+- **Checked by `Declarations.new/2`, every fault at once, under `[:actions, i]`:** the actions not a list `{:not_a_list, other}` at `[:actions]`; an action not a map `{:not_a_map, other}`; a missing `on`, `set` or `value` `:required` at its key, another key `:unknown_key`; an `on` not among `events` `{:undeclared, event}`; a `value` outside the five paths `{:not_an_event_path, value}`; and, given the component module, a `set` naming no parameter `{:unknown_param, name}` and one not bindable `{:not_bindable, name}` (with no module, as for `isolation`, the parameters aren't checked). Names given as atoms are read as their spelling, and no atom is made.
+
+```test:events-actions
+default actions build with every name a string, kept in their order, and default to none; each fault is at its path under [:actions, i], all at once; event_paths/0 is the five paths
+```
 
 ```test:events-unique
 a duplicated event name is a fault naming it, emits?/2 answers declared names, and announcement requests are built only for declared names with text and a politeness

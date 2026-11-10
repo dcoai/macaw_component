@@ -6,7 +6,7 @@ defmodule Macaw.Component.ErrorsValuesTest do
   use ExUnitProperties
 
   alias Macaw.Component
-  alias Macaw.Component.{Conformance, Context, Slot}
+  alias Macaw.Component.{Conformance, Context, Declarations, Slot}
   alias Macaw.Component.Test.{Cards, Honest}
   alias Macaw.Data.Schema
 
@@ -110,6 +110,17 @@ defmodule Macaw.Component.ErrorsValuesTest do
           ) do
       assert fault_value?(Context.new(attrs))
       assert fault_value?(Context.new(Map.to_list(attrs)))
+    end
+  end
+
+  @tag verifies: "component-errors-values"
+  property "default actions answer a value over any input" do
+    action = one_of([keys([:on, :set, :value]), junk()])
+
+    check all(actions <- one_of([list_of(action, max_length: 3), junk()])) do
+      for module <- [nil, Honest.Prose] do
+        assert fault_value?(Declarations.new([events: ["open"], actions: actions], module))
+      end
     end
   end
 

@@ -14,6 +14,7 @@ defmodule Macaw.Component.Declarations do
     :writes,
     :local,
     :events,
+    :actions,
     :announces,
     :observes,
     :shortcuts,
@@ -29,6 +30,7 @@ defmodule Macaw.Component.Declarations do
             writes: %{},
             local: %{},
             events: [],
+            actions: [],
             announces: [],
             observes: [],
             shortcuts: [],
@@ -44,6 +46,7 @@ defmodule Macaw.Component.Declarations do
           writes: %{String.t() => State.type()},
           local: %{String.t() => State.type()},
           events: [String.t()],
+          actions: [action()],
           announces: [String.t()],
           observes: [atom()],
           shortcuts: [%{key: String.t(), action: String.t(), description: String.t()}],
@@ -55,12 +58,53 @@ defmodule Macaw.Component.Declarations do
           access: String.t() | nil
         }
 
+  @typedoc "A default action (spec/01 §1.6): an event sets one of the component's bindable parameters."
+  @type action :: %{on: String.t(), set: String.t(), value: event_path()}
+
+  @typedoc "A field of an event an action reads (spec/01 §1.6)."
+  @type event_path ::
+          {:event, :value | :identity | [:value | :identity | :row | String.t()]}
+
   @shortcut_keys [:key, :action, :description]
+  @action_keys [:on, :set, :value]
   @named_key ~r/\A[A-Z][A-Za-z0-9]+\z/
 
   @doc "The keys, in the order of spec/01 §1.2's table."
   @spec keys() :: [atom(), ...]
   def keys, do: @keys
+
+  @doc """
+  The five event paths an action may read (spec/01 §1.6), `key` and `field` standing for
+  any non-empty string.
+
+      iex> length(Macaw.Component.Declarations.event_paths())
+      5
+  """
+  @spec event_paths() :: [event_path(), ...]
+  def event_paths,
+    do: [
+      {:event, :value},
+      {:event, [:value, "key"]},
+      {:event, :identity},
+      {:event, [:identity, "field"]},
+      {:event, [:row, "field"]}
+    ]
+
+  @doc """
+  Whether a term is one of the five event paths.
+
+      iex> Macaw.Component.Declarations.event_path?({:event, [:value, "sort"]})
+      true
+      iex> Macaw.Component.Declarations.event_path?({:event, [:value]})
+      false
+  """
+  @spec event_path?(term()) :: boolean()
+  def event_path?({:event, which}) when which in [:value, :identity], do: true
+
+  def event_path?({:event, [which, name]}) when which in [:value, :identity, :row],
+    do: is_binary(name) and name != ""
+
+  def event_path?(_other), do: false
 
   @doc """
   The declarations from an answer (a keyword list or a map with atom keys) for a component
@@ -85,6 +129,7 @@ defmodule Macaw.Component.Declarations do
 
     {slots, slot_faults} = slots(declarations.slots)
     {observes, observe_faults} = observes(declarations.observes)
+    {actions, action_faults} = actions(declarations.actions, declarations.events, module)
 
     faults =
       unknown ++
@@ -92,6 +137,7 @@ defmodule Macaw.Component.Declarations do
         State.writes_faults(declarations.writes) ++
         State.local_faults(declarations.local) ++
         names(:events, declarations.events) ++
+        action_faults ++
         names(:announces, declarations.announces) ++
         observe_faults ++
         shortcuts(declarations.shortcuts) ++
@@ -101,7 +147,12 @@ defmodule Macaw.Component.Declarations do
         isolation(declarations.isolation, module) ++
         access(declarations.access)
 
-    Macaw.Component.answer(faults, %{declarations | slots: slots, observes: observes})
+    Macaw.Component.answer(faults, %{
+      declarations
+      | slots: slots,
+        observes: observes,
+        actions: actions
+    })
   end
 
   def new(other, _module), do: {:error, [{[], {:not_a_map, other}}]}
@@ -155,6 +206,80 @@ defmodule Macaw.Component.Declarations do
   end
 
   defp observes(other), do: {[], [{[:observes], {:not_a_list, other}}]}
+
+  defp actions(list, events, module) when is_list(list) do
+    bindables = bindables(module)
+
+    {built, faults} =
+      list
+      |> Enum.with_index()
+      |> Enum.map(fn {action, i} -> action(action, [:actions, i], events, bindables) end)
+      |> Enum.unzip()
+
+    {built, List.flatten(faults)}
+  end
+
+  defp actions(other, _events, _module), do: {[], [{[:actions], {:not_a_list, other}}]}
+
+  defp action(%{} = action, path, events, bindables) when not is_struct(action) do
+    unknown = for k <- Map.keys(action), k not in @action_keys, do: {path ++ [k], :unknown_key}
+    missing = for k <- @action_keys, not Map.has_key?(action, k), do: {path ++ [k], :required}
+    on = spelled(Map.get(action, :on))
+    set = spelled(Map.get(action, :set))
+    value = Map.get(action, :value)
+
+    on_faults =
+      cond do
+        not Map.has_key?(action, :on) -> []
+        not (is_binary(on) and on != "") -> [{path ++ [:on], :bad_name}]
+        on not in List.wrap(events) -> [{path ++ [:on], {:undeclared, on}}]
+        true -> []
+      end
+
+    set_faults =
+      cond do
+        not Map.has_key?(action, :set) -> []
+        not (is_binary(set) and set != "") -> [{path ++ [:set], :bad_name}]
+        bindables == :unchecked -> []
+        not Map.has_key?(bindables, set) -> [{path ++ [:set], {:unknown_param, set}}]
+        not bindables[set] -> [{path ++ [:set], {:not_bindable, set}}]
+        true -> []
+      end
+
+    value_faults =
+      if Map.has_key?(action, :value) and not event_path?(value),
+        do: [{path ++ [:value], {:not_an_event_path, value}}],
+        else: []
+
+    {%{on: on, set: set, value: value},
+     unknown ++ missing ++ on_faults ++ set_faults ++ value_faults}
+  end
+
+  defp action(other, path, _events, _bindables), do: {other, [{path, {:not_a_map, other}}]}
+
+  # An atom name is read as its spelling; no atom is made.
+  defp spelled(name) when is_atom(name) and name not in [nil, true, false],
+    do: Atom.to_string(name)
+
+  defp spelled(name), do: name
+
+  # Each parameter of the module by name, whether it is bindable; with no module, as for
+  # `isolation`, nothing is checked. A component's bad parameters are its own fault,
+  # reported by `Macaw.Component.parameters/1`, so they check nothing here.
+  defp bindables(nil), do: :unchecked
+
+  defp bindables(module) do
+    Code.ensure_loaded(module)
+
+    with true <- function_exported?(module, :parameters, 0),
+         %{} = parameters <- module.parameters() do
+      for {name, parameter} <- parameters,
+          into: %{},
+          do: {name, is_map(parameter) and Map.get(parameter, :bindable) == true}
+    else
+      _ -> :unchecked
+    end
+  end
 
   defp shortcuts(list) when is_list(list) do
     each =

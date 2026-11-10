@@ -10,7 +10,7 @@ end
 defmodule Macaw.Component.Test.Honest.Prose do
   @moduledoc false
   # Content with headings from the context, ids from the instance, a slot and a bindable
-  # parameter it never reads in its declarations.
+  # parameter it never reads in its declarations, set by a default action.
   use Macaw.Component, name: "test.honest.prose", kinds: [:content]
   alias Macaw.Component.{Context, Test.Kit}
 
@@ -32,7 +32,8 @@ defmodule Macaw.Component.Test.Honest.Prose do
        slots: %{"sections" => %{requires: %{"title" => %{type: :text}}}},
        reading: :read,
        words: 12,
-       events: ["open"]}
+       events: ["open"],
+       actions: [%{on: "open", set: "emphasis", value: {:event, [:value, "emphasis"]}}]}
 
   @impl true
   def budget("sections", _settings, {w, _h}), do: max(1, trunc(w / 100))
@@ -196,7 +197,8 @@ defmodule Macaw.Component.Test.Broken do
             style_element inline_script onclick javascript_url foreign_img foreign_srcset
             fixed_heading top_h3 img_no_alt unnamed_button bad_state dangling_reference
             unnamed_svg positive_tabindex composite_two_stops literal_fill bad_cue
-            duplicate_id unstable_id unprefixed_id blank_drawn bad_budget bad_order)
+            duplicate_id unstable_id unprefixed_id blank_drawn bad_budget bad_order
+            bad_action)
 
   def flaws, do: @flaws
 
@@ -211,6 +213,10 @@ defmodule Macaw.Component.Test.Broken do
   @impl true
   def declarations(%{"flaw" => "impure"}), do: {:ok, events: ["e#{System.unique_integer()}"]}
   def declarations(%{"flaw" => "reads_bindable", "mood" => mood}), do: {:ok, events: [mood]}
+
+  # An action setting a parameter that isn't bindable.
+  def declarations(%{"flaw" => "bad_action"}),
+    do: {:ok, events: ["pick"], actions: [%{on: "pick", set: "flaw", value: {:event, :value}}]}
 
   def declarations(%{"flaw" => flaw}) when flaw in ["bad_budget", "bad_order"],
     do: {:ok, slots: %{"rows" => %{}}}
