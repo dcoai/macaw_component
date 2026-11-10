@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **`Client.event/3` takes terms, not JSON** (#44, #45, spec/02 §8.3). It is the wire's outbound edge: a component hands it the terms it holds, and a `DateTime` in `value:` or `identity:` is written as its ISO 8601 spelling in UTC, shifted there from another zone; a point `{lon, lat}` in `value:` as `[lon, lat]`, and a literal `Macaw.Layers.Color` as its CSS hex. Before, each was a wrong call and a component spelled it itself. Every other value is written as before; another struct or an atom is still a wrong call.
+- **New: `Client.attributes/2`** (#45, spec/02 §8.1). `attributes(declarations, context)` is `attributes/1`'s two attributes plus `data-mw-instance` (`instance_attribute/0`) and `data-mw-events` (`events_attribute/0`), what a hook that emits events needs. `attributes/1` is unchanged.
+- **New: `emit` in the client module** (#45, spec/02 §8.2). `emit(hook, name, {value, identity})` sends an event a hook works out in the browser, such as a brush's range, as the same `"mw-event"` a rendered `Client.event/3` sends, a `Date` written in UTC. It throws on an event the component doesn't declare. `names` gains `instanceAttribute`, `eventsAttribute` and `eventName`.
+
 ## v0.9.0 (2026-11-10)
 
 **Events reach the host** (#22, #39). A component can say what its events do by default, and carry them from the browser to the host, which macaw's state on a surface reads (macaw spec/03 §1.3, §1.6). Both are new; nothing changes for a component that uses neither.

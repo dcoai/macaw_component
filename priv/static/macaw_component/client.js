@@ -6,7 +6,7 @@
 //
 // and a hook imports it as
 //
-//     import { announce, bus } from "/macaw_component/client.js";
+//     import { announce, bus, emit } from "/macaw_component/client.js";
 //
 // The names below are Macaw.Component.Client's; the module holds no source of a
 // component's names: what a component declares reaches it as the data attributes
@@ -20,6 +20,10 @@ const ANNOUNCE_EVENT = 'macaw:announce';
 const BUS_NAME = 'MacawBus';
 const ANNOUNCES_ATTRIBUTE = 'data-mw-announces';
 const LOCAL_ATTRIBUTE = 'data-mw-local';
+const INSTANCE_ATTRIBUTE = 'data-mw-instance';
+const EVENTS_ATTRIBUTE = 'data-mw-events';
+const EVENT_NAME = 'mw-event';
+const EVENT_PARAM = 'mw';
 
 // At most one announcement per region in this many milliseconds; requests arriving
 // meanwhile wait in the region's queue.
@@ -31,6 +35,9 @@ export const names = Object.freeze({
   busName: BUS_NAME,
   announcesAttribute: ANNOUNCES_ATTRIBUTE,
   localAttribute: LOCAL_ATTRIBUTE,
+  instanceAttribute: INSTANCE_ATTRIBUTE,
+  eventsAttribute: EVENTS_ATTRIBUTE,
+  eventName: EVENT_NAME,
   intervalMs: INTERVAL_MS
 });
 
@@ -179,4 +186,29 @@ function refuseUndeclared(el, key) {
   if (typeof key !== 'string' || !declared(el, LOCAL_ATTRIBUTE).includes(key)) {
     throw new Error(BUS_NAME + ': the key ' + JSON.stringify(key) + ' is not declared in local by this component');
   }
+}
+
+// ---------------------------------------------------------------------------------------
+// The event wire (spec/02 §8.3), from a hook: an event whose value the hook works out in
+// the browser, a brush's range among them. It travels as the one LiveView event a
+// rendered Client.event/3 sends, so the host reads both the same way.
+
+// emit(hook, name, {value, identity}) sends the event through hook.pushEvent. The
+// instance and the declared events are read from the nearest element carrying them,
+// Client.attributes/2's. A name the component doesn't declare in events throws an Error
+// naming it, and nothing is sent: the hook's bug, surfaced where it is made. A Date is
+// written as its ISO 8601 spelling in UTC, as Client.event/3 writes a DateTime; every
+// other value as JSON has it.
+export function emit(hook, name, { value, identity } = {}) {
+  const el = hook.el;
+  if (typeof name !== 'string' || !declared(el, EVENTS_ATTRIBUTE).includes(name)) {
+    throw new Error('emit: the event ' + JSON.stringify(name) + ' is not declared in events by this component');
+  }
+  const holder = el.closest('[' + INSTANCE_ATTRIBUTE + ']');
+  if (holder === null) throw new Error('emit: no ' + INSTANCE_ATTRIBUTE + ' on the element or an ancestor');
+  const payload = { instance: holder.getAttribute(INSTANCE_ATTRIBUTE), name };
+  if (value !== undefined) payload.value = value;
+  if (identity !== undefined) payload.identity = identity;
+  // JSON.stringify writes a Date through its toJSON, toISOString: UTC, with a Z.
+  hook.pushEvent(EVENT_NAME, { [EVENT_PARAM]: JSON.stringify(payload) });
 }

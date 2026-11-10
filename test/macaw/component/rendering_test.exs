@@ -402,12 +402,61 @@ defmodule Macaw.Component.RenderingTest do
       refute Mode.allows?(mode, :events)
     end
 
-    # What isn't JSON data is the function's contract: a wrong call. (Built at runtime, so
-    # the type checker can't see it.)
-    [time, atom] = Enum.shuffle([DateTime.utc_now()]) ++ Enum.shuffle([:p50])
-    [empty] = Enum.shuffle([""])
+    # A component hands the wire its terms: a DateTime is written in UTC, from any zone,
+    # keeping its precision; in a value, a list, a map and an identity alike.
+    paris = %DateTime{
+      year: 2026,
+      month: 11,
+      day: 10,
+      hour: 13,
+      minute: 0,
+      second: 0,
+      microsecond: {120_000, 3},
+      time_zone: "Europe/Paris",
+      zone_abbr: "CET",
+      utc_offset: 3600,
+      std_offset: 0
+    }
 
-    for bad <- [[value: time], [value: atom], [value: %{atom => 1}], [identity: %{"a" => [1]}]] do
+    utc = ~U[2026-11-10 11:00:00Z]
+
+    [_, {_, json}] =
+      Client.event(context(), "brush",
+        value: %{"from" => utc, "to" => paris, "marks" => [utc]},
+        identity: %{"t" => paris}
+      )
+
+    assert JSON.decode!(json) == %{
+             "instance" => "c1",
+             "name" => "brush",
+             "value" => %{
+               "from" => "2026-11-10T11:00:00Z",
+               "to" => "2026-11-10T12:00:00.120Z",
+               "marks" => ["2026-11-10T11:00:00Z"]
+             },
+             "identity" => %{"t" => "2026-11-10T12:00:00.120Z"}
+           }
+
+    # A point as [lon, lat], a literal color as its CSS hex.
+    red = Macaw.Layers.Color.parse!("#ff000080")
+    [_, {_, json}] = Client.event(context(), "pick", value: %{"at" => {-73.5, 45.5}, "c" => red})
+    assert JSON.decode!(json)["value"] == %{"at" => [-73.5, 45.5], "c" => "#ff000080"}
+
+    # Another struct or an atom is the function's contract: a wrong call. (Built at
+    # runtime, so the type checker can't see it.)
+    [date, atom] = Enum.shuffle([~D[2026-11-10]]) ++ Enum.shuffle([:p50])
+    [empty] = Enum.shuffle([""])
+    [theme, point] = Enum.shuffle([{:color, "accent"}]) ++ Enum.shuffle([{-73.5, 45.5}])
+
+    for bad <- [
+          [value: date],
+          [value: atom],
+          [value: %{atom => 1}],
+          [identity: %{"a" => [1]}],
+          [identity: %{"a" => date}],
+          [value: theme],
+          [identity: %{"at" => point}]
+        ] do
       assert_raise FunctionClauseError, fn -> Client.event(context(), "sort", bad) end
     end
 
@@ -453,6 +502,20 @@ defmodule Macaw.Component.RenderingTest do
              {"data-mw-announces", ~s(["opened"])},
              {"data-mw-local", "[]"}
            ]
+
+    # A hook that emits reads its instance and its events, in declared order, besides.
+    {:ok, emits} = Declarations.new([events: ["zoom", "brush"]], nil)
+
+    assert Client.attributes(emits, context()) ==
+             Client.attributes(emits) ++
+               [{"data-mw-instance", "c1"}, {"data-mw-events", ~s(["zoom","brush"])}]
+
+    assert {Client.instance_attribute(), Client.events_attribute()} ==
+             {"data-mw-instance", "data-mw-events"}
+
+    assert Client.attributes(none, context()) ==
+             Client.attributes(none) ++
+               [{"data-mw-instance", "c1"}, {"data-mw-events", "[]"}]
   end
 
   @tag verifies: "client-module"
@@ -468,7 +531,10 @@ defmodule Macaw.Component.RenderingTest do
           Client.announce_event(),
           Client.bus_name(),
           Client.announces_attribute(),
-          Client.local_attribute()
+          Client.local_attribute(),
+          Client.instance_attribute(),
+          Client.events_attribute(),
+          Client.event_name()
         ]
 
     for name <- names, do: assert(text =~ "'#{name}'", "#{name} is not in the module")
@@ -477,6 +543,15 @@ defmodule Macaw.Component.RenderingTest do
     refute text =~ ~r/^\s*import\s/m
     assert text =~ "declared(el, ANNOUNCES_ATTRIBUTE).includes(detail.name)"
     assert text =~ "is not declared in local by this component"
+
+    # emit is exported, sends the one event with its payload under the attribute's param,
+    # and refuses an undeclared event.
+    "phx-value-" <> param = Client.event_attribute()
+    assert text =~ "export function emit(hook, name, { value, identity } = {})"
+    assert text =~ "const EVENT_PARAM = '#{param}';"
+    assert text =~ "hook.pushEvent(EVENT_NAME, { [EVENT_PARAM]: JSON.stringify(payload) })"
+    assert text =~ "declared(el, EVENTS_ATTRIBUTE).includes(name)"
+    assert text =~ "is not declared in events by this component"
   end
 
   @tag verifies: "client-package"

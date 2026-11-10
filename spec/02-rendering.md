@@ -184,8 +184,14 @@ The client learns a component's names **from its declarations, rendered**, never
 
 Both are always present, `[]` when nothing is declared, so a component that declares nothing has nothing accepted. A component puts them on the element its hook is attached to, or on an ancestor of it within the component: `<div phx-hook="Cards" {Client.attributes(@declarations)}>`. The client reads them from the **nearest** element carrying them, the hook's element or an ancestor, at each request, so declarations that follow settings are read as rendered. JSON is this attribute's encoding at the edge; the declarations themselves are terms (macaw#188).
 
+**A hook that emits events** (§8.3) also needs its instance and its event names. `Client.attributes(declarations, context)` is `attributes/1`'s two, then:
+- **`data-mw-instance`** (`instance_attribute/0`): the context's instance id;
+- **`data-mw-events`** (`events_attribute/0`): the `events` names, in declared order, a JSON list.
+
+`attributes/1` stays as it is, for a hook that only announces or uses the bus.
+
 ```test:client-attributes
-the two attributes are rendered from the declarations: exactly the declared announcement names and local keys, escaped and read back, and empty lists when nothing is declared
+the attributes are rendered from the declarations: exactly the declared announcement names and local keys, escaped and read back, and empty lists when nothing is declared; attributes/2 adds the context's instance and the declared events in order
 ```
 
 ### 8.2 The shared client module {#components-client-module}
@@ -197,7 +203,7 @@ The package ships **one ES module implementing both for hooks**, `Client.module_
   plug Plug.Static, at: "/", from: {:macaw_component, "priv/static"}, only: ~w(macaw_component)
   ```
 
-- **Imported** by a hook from `Client.module_url/0`, `"/macaw_component/client.js"`: `import { announce, bus } from "/macaw_component/client.js"` (01 §1.8). A page holds one instance of it however many hooks import it.
+- **Imported** by a hook from `Client.module_url/0`, `"/macaw_component/client.js"`: `import { announce, bus, emit } from "/macaw_component/client.js"` (01 §1.8). A page holds one instance of it however many hooks import it.
 
 **Its exports:**
 - **`findAnnouncer()`** answers `{polite, assertive}`, the two regions, found by their ids. On a page without them, the first call creates them at the end of the body (`aria-live` of their politeness, `aria-atomic="true"`, visually hidden through the CSSOM, never a `style` attribute, §5) and becomes **their announcer**: it alone listens for the announce event. Where the regions were found, their creator announces (`macaw_live`, or the hook that made them), so a page has one queue.
@@ -209,30 +215,34 @@ The package ships **one ES module implementing both for hooks**, `Client.module_
   - **`publish(el, key, value)`** hands `value`, as given, to every subscriber of `key`, the publisher's own included, as `callback(value, el)`, so a hook skips its own echo by the source;
   - **`subscribe(el, key, callback)`** answers the function that unsubscribes;
   - each **refuses** a key `el`'s component doesn't declare in `local` (§8.1) by throwing an `Error` naming it, and nothing is delivered then: an undeclared key is the hook's bug, surfaced where it is made.
+- **`emit(hook, name, {value, identity})`** sends an event the hook works out in the browser, such as a brush's range, on §8.3's wire: `hook.pushEvent("mw-event", {mw: json})`, where `json` is the payload a rendered `Client.event/3` carries, `{"instance", "name"}` with `"value"` and `"identity"` when given. The instance and the declared events are read from the nearest element carrying `attributes/2`'s attributes (§8.1). A `Date` is written as its ISO 8601 spelling in UTC (`toISOString`), as `Client.event/3` writes a `DateTime`. It **refuses** a name the component doesn't declare in `events`, and an element with no instance, by throwing an `Error` naming it; nothing is sent then.
 - **`names`**, the fixed names above, frozen, the ones `Macaw.Component.Client` answers.
 
 **Values pass through uninspected** (macaw#188). The bus checks keys, never values: a `local` key's type is its domain type (01 §1.5), and how a value of a local type is written on the client (a time as epoch milliseconds, a window as a pair) is **that component's adapter**, agreed between the components sharing the key's name. The bus neither encodes nor validates it.
 
 ```test:client-module
-the module is at its path in the package's priv/static, served at its url, holds each fixed name, imports nothing, and refuses undeclared names and keys
+the module is at its path in the package's priv/static, served at its url, holds each fixed name, exports emit, imports nothing, and refuses undeclared names, keys and events
 ```
 
 ```test:client-package
 the package's files include priv, so the module ships on Hex
 ```
 
-**Gap:** the module's behavior in a browser (finding and creating the regions, queuing, merging, rate-limiting, dropping, the bus's delivery and refusals) is **untested** until the example app's keyboard and axe-core CI exists ([macaw_compose 10 §4](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)). The tests here read the module as text: its place, its names and the presence of its refusals.
+**Gap:** the module's behavior in a browser (finding and creating the regions, queuing, merging, rate-limiting, dropping, the bus's delivery and refusals, and `emit`'s payload and refusals) is **untested** until the example app's keyboard and axe-core CI exists ([macaw_compose 10 §4](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)). The tests here read the module as text: its place, its names and the presence of its refusals.
 
 ### 8.3 The event wire {#components-client-events}
 
-**An event travels from the browser to the host as one LiveView event, the same for every component** (#39, [macaw_compose 03 §1.6](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-wire)), so a host writes one `handle_event/3` for a whole surface, and a component renders it the same on a Macaw page and off one. It needs no hook and no asset.
+**An event travels from the browser to the host as one LiveView event, the same for every component** (#39, [macaw_compose 03 §1.6](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-wire)), so a host writes one `handle_event/3` for a whole surface, and a component renders it the same on a Macaw page and off one. An event whose value is known when the component renders needs no hook and no asset; one whose value the browser works out is sent by a hook through the client module's `emit` (§8.2), on the same wire.
 - **`Client.event(context, name, opts)`** answers the attributes that make an element emit the event, a list of `{name, value}` pairs for HEEx to splice into the tag: `<button type="button" {Client.event(@context, "sort", value: "p50")}>`.
   - **In `:live` and `:socketless`** (the `:events` feature, §3): `phx-click` is `event_name/0`, `"mw-event"`, and `phx-value-mw` (`event_attribute/0`) holds the event as JSON: `{"instance": id, "name": name}` with `"value"` and `"identity"` when given. `instance` is always the context's.
   - **In `:neutral` and `:print`** it answers `[]`, so the element is inert there.
   - **One JSON attribute, not a `phx-value-` per field,** because HTML lower-cases attribute names: a `phx-value-hostName` would arrive as `hostname`. JSON is its encoding at the edge, as for 8.1's attributes.
-- **What it carries is JSON data.** `value:` is a string, a number, a boolean, `nil`, or a list or a string-keyed map of these; `identity:` is a string-keyed map of scalars. A time travels as its ISO 8601 spelling. Anything else, an empty or non-string name, or another option is the function's contract, a wrong call (`FunctionClauseError` or `ArgumentError`), as 00 §4 states.
+- **It is the wire's outbound edge: a component hands it terms, never JSON.** JSON is the wire's representation; it is written here and read back only by the host's inbound edge ([macaw_compose 03 §1.6](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-wire)), and no component spells a value for it.
+  - **What it takes:** `value:` is a string, a number, a boolean, `nil`, a `DateTime`, a point `{lon, lat}`, a literal color (`%Macaw.Layers.Color{}`), or a list or a string-keyed map of these; `identity:` is a string-keyed map of strings, numbers, booleans, `nil` and `DateTime`s.
+  - **The encoding rule,** one spelling for each type whose term JSON can't hold: a `DateTime` is written as its ISO 8601 spelling in UTC, shifted there from another zone, keeping its precision (`"2026-11-10T12:00:00Z"`); a point as the list `[lon, lat]`; a literal color as its CSS hex, `Color.to_css/1` (`"#ff000080"`). Every other value is written as JSON has it. A theme color (`{:color, name}` and the like) has no wire form: it is resolved before it is sent. `emit` (§8.2) writes a browser `Date` the same way, so one spelling crosses the wire whichever side sends.
+- **A wrong call:** another struct, an atom, an empty or non-string name, or another option is the function's contract, a wrong call (`FunctionClauseError` or `ArgumentError`), as 00 §4 states.
 - **The kit checks it** (04 §2): `:modes` finds `phx-click` or a `phx-value-` attribute in neutral or print (`{:event_wire, element}`), and `:declarations` reads every rendered `phx-value-mw` in live and socketless: one that isn't such a JSON object is `{:bad_event_payload, text}`, a name the component doesn't declare `{:undeclared_event, name}`, and another instance than the context's `{:foreign_instance, id}`.
 
 ```test:client-events
-event/3 answers phx-click mw-event and a JSON phx-value-mw in live and socketless, with the context's instance and the value and identity given, keeping names' case and a map's shape, and nothing in neutral and print; a term that isn't JSON data is a wrong call
+event/3 answers phx-click mw-event and a JSON phx-value-mw in live and socketless, with the context's instance and the value and identity given, keeping names' case and a map's shape, a DateTime in value or identity written as its UTC ISO 8601 spelling from any zone, a point as [lon, lat] and a literal color as its CSS hex, and nothing in neutral and print; another struct, a theme color or an atom is a wrong call
 ```
