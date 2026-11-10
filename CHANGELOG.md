@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## v0.9.0 (2026-11-10)
+
+**Events reach the host** (#22, #39). A component can say what its events do by default, and carry them from the browser to the host, which macaw's state on a surface reads (macaw spec/03 §1.3, §1.6). Both are new; nothing changes for a component that uses neither.
+
+### Upgrading from 0.8.x
+
+1. **Depend on `macaw_component ~> 0.9.0`.** No call changes.
+2. **Code that lists every declaration key or mode feature** sees one more of each: `Declarations.keys/0` has `actions` after `events`, and `Mode.features/0` ends with `:events`.
+3. **To make a click reach the host,** splice `Client.event(@context, name, value: v)` into the element (spec/02 §8.3), and declare the event; the kit checks both.
+
+### Changes
 
 - **New: default actions** (#22, #40, spec/01 §1.6). A component declares `actions`, each `%{on: event, set: parameter, value: {:event, path}}`: what its events do when its placement says nothing, each setting one of its own bindable parameters from one of the five event paths, `Declarations.event_paths/0` (macaw spec/03 §1.3). `Declarations.new/2` judges them, every fault at once under `[:actions, i]`. The default is `[]`, so a component that declares none is unchanged; `keys/0` is fourteen, `actions` after `events`. The kit's `:declarations` check finds a component whose actions are refused.
 - **New: the event wire** (#39, #41, spec/02 §8.3). `Macaw.Component.Client.event(context, name, value: v, identity: id)` answers the attributes that make an element emit an event, for HEEx to splice into its tag: `phx-click="mw-event"` (`event_name/0`) and one `phx-value-mw` (`event_attribute/0`) holding `{"instance", "name", "value", "identity"}` as JSON, so a host writes one `handle_event/3` for a whole surface (macaw spec/03 §1.6), names keep their case, and no hook or asset is needed. It renders in live and socketless and answers `[]` in neutral and print, the new mode feature `:events`. `value` is JSON data and `identity` a map of scalars; anything else is a wrong call. The kit checks it: `:modes` finds `phx-click` or a `phx-value-` attribute in neutral or print (`{:event_wire, element}`), and `:declarations` reads every rendered payload (`{:bad_event_payload, text}`, `{:undeclared_event, name}`, `{:foreign_instance, id}`). Nothing changes for a component that doesn't call it, but `Mode.features/0` has seven features.
