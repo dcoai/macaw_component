@@ -313,7 +313,8 @@ defmodule Macaw.Component.RenderingTest do
            }
 
     for state <- Drawn.all() -- [:live] do
-      assert Drawn.glyph(state) == Macaw.Layers.Theme.cue(Drawn.role(state)).glyph
+      {:ok, cue} = Macaw.Layers.Theme.cue(Drawn.role(state))
+      assert Drawn.glyph(state) == cue.glyph
       assert is_binary(Drawn.words(state)) and Drawn.words(state) != ""
 
       html = state |> Drawn.render(context()) |> Phoenix.HTML.safe_to_string()

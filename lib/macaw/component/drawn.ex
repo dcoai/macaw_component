@@ -56,8 +56,13 @@ defmodule Macaw.Component.Drawn do
   @spec glyph(t()) :: atom() | nil
   def glyph(state) do
     case role(state) do
-      nil -> nil
-      role -> Theme.cue(role).glyph
+      nil ->
+        nil
+
+      # A drawn state's role is one of the theme's status roles, which always has a cue.
+      role ->
+        {:ok, cue} = Theme.cue(role)
+        cue.glyph
     end
   end
 

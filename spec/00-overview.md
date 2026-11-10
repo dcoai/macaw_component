@@ -35,5 +35,5 @@ Built as step 8.1 of the family's order of work ([macaw_compose 00 §5](https://
 - **Enforced in CI:** `ci/raises.exs`, the family's copy, finds every explicit `raise`, `throw` and `exit` in `lib/` and fails on one outside `ci/raises_allowlist.exs`, which names each by function with its class (`:bang`, `:compile`, `:mix_task`, `:invariant`) and reason, defaults to `[]`, and fails on a stale entry. Implicit raises are guarded by property tests.
 
 ```test:component-errors-values
-over generated malformed settings, slots, fields and context attrs, settings/2, declarations/2, Slot.new/1, check/3, resolve/3 and Context.new/1 answer a value, every fault worded, never a raise
+over generated malformed settings, slots, fields, context attrs and kit options, settings/2, declarations/2, Slot.new/1, check/3, resolve/3 and Context.new/1 answer a value, and Conformance.check/3 answers findings, every fault worded, never a raise
 ```

@@ -1,7 +1,20 @@
 # Changelog
 
-## Unreleased
+## v0.8.0 (2026-11-10)
 
+**Errors are values, on macaw_layers 0.5 and macaw_data 0.14** (#12). This release is breaking: a failure in macaw_component is now answered as a value, and a raise has to be asked for by name. It is also breaking for an adopter pinning macaw_layers `~> 0.4` or macaw_data `~> 0.13`.
+
+### Upgrading from 0.7.x
+
+1. **Depend on `macaw_layers ~> 0.5.0` and `macaw_data ~> 0.14.0`.** For any call you make into either directly, follow its own upgrading notes. The one a component is likeliest to make is `Macaw.Layers.Theme.cue/1`, which now answers `{:ok, cue}`.
+2. **A host resolving bindings matches `Slot.resolve/3`'s `{:ok, resolved}`,** or calls `Slot.resolve!/3` to keep the raise.
+3. **A test using the conformance kit fails on misuse with findings,** where it raised `ArgumentError`. A caller of `Conformance.checks/1` matches `{:ok, checks}`.
+4. **A fixture that binds deliveries naming their schema adds `schemas`,** or the `:bindings` check answers `{:no_schema, slot}`.
+
+### Changes
+
+- **Breaking:** on `macaw_layers ~> 0.5.0` (was `~> 0.4.0`) and `macaw_data ~> 0.14.0` (was `~> 0.13.0`) (#35, #12). A drawn state's glyph reads `Theme.cue/1`'s `{:ok, cue}`. Nothing else here calls what either changed.
+- A property holds the kit to findings over generated options (#35): `Conformance.check/3` never raises, and every finding is worded. On macaw_layers 0.4.0 it failed 3 seeds in 40, on a tuple in a fixture's key path (fixed in macaw_layers 0.5.0).
 - `mix hex.publish` runs the family's drift check first (#38, #27): a `ci/` copy that is edited, missing or behind the reference stops the release, naming it.
 - A test holds the README's install pin to `mix.exs`'s version, and the status line no longer names one (#37, #26).
 - The kit's fixtures take `schemas` (#19): each slot's schema, a `%Macaw.Data.Schema{}` or its attrs, carried by every context the kit builds, so a component that reads units or labels through its context is checked as it draws. A bound delivery naming a schema version the fixture doesn't give is `{:no_schema, slot}` from the `:bindings` check, and one it gives another of `{:schema_mismatch, slot, given, delivered}`. A component whose fixtures bind deliveries that name their schema adds the schemas to them.

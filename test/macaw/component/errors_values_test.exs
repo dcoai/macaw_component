@@ -1,12 +1,12 @@
 defmodule Macaw.Component.ErrorsValuesTest do
-  # Errors are values (#12, #34, spec/00 §3): over generated malformed input, the readers of
-  # settings, slots, bindings, contexts and the kit's options answer a value, never a
-  # raise, and every fault they give is worded.
+  # Errors are values (#12, #34, #35, spec/00 §4): over generated malformed input, the
+  # readers of settings, slots, bindings, contexts and the kit's options answer a value,
+  # never a raise, and every fault they give is worded.
   use ExUnit.Case, async: true
   use ExUnitProperties
 
   alias Macaw.Component
-  alias Macaw.Component.{Context, Slot}
+  alias Macaw.Component.{Conformance, Context, Slot}
   alias Macaw.Component.Test.{Cards, Honest}
   alias Macaw.Data.Schema
 
@@ -110,6 +110,17 @@ defmodule Macaw.Component.ErrorsValuesTest do
           ) do
       assert fault_value?(Context.new(attrs))
       assert fault_value?(Context.new(Map.to_list(attrs)))
+    end
+  end
+
+  @tag verifies: "component-errors-values"
+  property "the kit answers findings over any options, never a raise" do
+    options = list_of(tuple({member_of([:fixtures, :check_sets, :speed]), junk()}), max_length: 2)
+
+    check all(opts <- options, max_runs: 40) do
+      findings = Conformance.check(:kinds, Honest.Menu, opts)
+      assert is_list(findings)
+      assert Enum.all?(findings, &is_binary(Conformance.format(&1)))
     end
   end
 end
