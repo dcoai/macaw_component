@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## v0.10.0 (2026-11-10)
+
+**The event wire at the edge** (#44). JSON is the wire's representation, and `Client.event/3` is its outbound edge: a component hands it terms, never a JSON spelling. A hook can now send an event it works out in the browser. Nothing breaks: every call that worked before writes the same payload.
+
+### Upgrading from 0.9.x
+
+1. **Depend on `macaw_component ~> 0.10.0`.** No call changes.
+2. **Stop spelling values for the wire.** Pass a `DateTime`, a point `{lon, lat}` or a literal color to `Client.event/3` as it is, instead of its text.
+3. **To emit from a hook,** put `Client.attributes(@declarations, @context)` on the hook's element and call `emit(this, name, {value})` from `/macaw_component/client.js` (spec/02 §8.2).
+
+### Changes
 
 - **`Client.event/3` takes terms, not JSON** (#44, #45, spec/02 §8.3). It is the wire's outbound edge: a component hands it the terms it holds, and a `DateTime` in `value:` or `identity:` is written as its ISO 8601 spelling in UTC, shifted there from another zone; a point `{lon, lat}` in `value:` as `[lon, lat]`, and a literal `Macaw.Layers.Color` as its CSS hex. Before, each was a wrong call and a component spelled it itself. Every other value is written as before; another struct or an atom is still a wrong call.
 - **New: `Client.attributes/2`** (#45, spec/02 §8.1). `attributes(declarations, context)` is `attributes/1`'s two attributes plus `data-mw-instance` (`instance_attribute/0`) and `data-mw-events` (`events_attribute/0`), what a hook that emits events needs. `attributes/1` is unchanged.
