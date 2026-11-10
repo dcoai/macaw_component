@@ -6,7 +6,7 @@ if Code.ensure_loaded?(LazyHTML) do
     # the rule broken.
 
     alias Macaw.Component
-    alias Macaw.Component.{Context, Drawn, Mode}
+    alias Macaw.Component.{Client, Context, Drawn, Mode}
     alias Macaw.Component.Conformance.{Html, Render}
     alias Macaw.Data.{Delivery, Schema, Table}
 
@@ -39,7 +39,10 @@ if Code.ensure_loaded?(LazyHTML) do
           [{"parameters", {:parameters, faults}}]
 
         {:ok, parameters} ->
-          Enum.flat_map(Keyword.fetch!(opts, :fixtures), &declarations(module, parameters, &1))
+          Enum.flat_map(
+            Keyword.fetch!(opts, :fixtures),
+            &declarations(module, parameters, &1, opts)
+          )
       end
     end
 
@@ -214,7 +217,7 @@ if Code.ensure_loaded?(LazyHTML) do
 
     # -- declarations ---------------------------------------------------------------------
 
-    defp declarations(module, parameters, fixture) do
+    defp declarations(module, parameters, fixture, opts) do
       where = {fixture.name, nil, nil}
 
       with {:settings, {:ok, settings}} <-
@@ -240,9 +243,48 @@ if Code.ensure_loaded?(LazyHTML) do
               not Component.Declarations.emits?(declarations, event),
               do: {where, {:undeclared_event, event}}
 
-        impure ++ bindable ++ events
+        impure ++ bindable ++ events ++ wires(module, fixture, settings, declarations, opts)
       else
         {step, {:error, faults}} -> [{where, {step, faults}}]
+      end
+    end
+
+    # Every event wire a live or socketless render carries (spec/02 §8.3): a JSON object of
+    # instance, name and optional value and identity, naming a declared event and the
+    # context's instance.
+    defp wires(module, fixture, settings, declarations, opts) do
+      {:ok, info} = Component.info(module)
+
+      for kind <- info.kinds,
+          mode <- [:live, :socketless],
+          context = Render.context(opts, fixture, mode: mode),
+          assigns = Render.assigns(module, fixture, settings, declarations, context),
+          element <- Html.elements(Render.render(module, kind, assigns)),
+          text = Html.attr(element, Client.event_attribute()),
+          text != nil,
+          what <- wire(text, declarations, context.instance),
+          uniq: true,
+          do: {{fixture.name, kind, mode}, what}
+    end
+
+    defp wire(text, declarations, instance) do
+      case JSON.decode(text) do
+        {:ok, %{"instance" => id, "name" => name} = payload}
+        when is_binary(id) and is_binary(name) and map_size(payload) <= 4 ->
+          if Map.keys(payload) -- ["instance", "name", "value", "identity"] == [] do
+            undeclared =
+              if Component.Declarations.emits?(declarations, name),
+                do: [],
+                else: [{:undeclared_event, name}]
+
+            foreign = if id == instance, do: [], else: [{:foreign_instance, id}]
+            undeclared ++ foreign
+          else
+            [{:bad_event_payload, text}]
+          end
+
+        _other ->
+          [{:bad_event_payload, text}]
       end
     end
 
@@ -359,7 +401,8 @@ if Code.ensure_loaded?(LazyHTML) do
                   e.tag == "script" && {:script, Html.describe(e)},
                   live_region?(e) && {:live_region, Html.describe(e)},
                   Map.has_key?(e.attrs, "data-mw-token") && {:token, Html.describe(e)},
-                  csrf?(e) && {:csrf, Html.describe(e)}
+                  csrf?(e) && {:csrf, Html.describe(e)},
+                  wire?(e) && {:event_wire, Html.describe(e)}
                 ],
                 &(&1 == false)
               )
@@ -367,6 +410,11 @@ if Code.ensure_loaded?(LazyHTML) do
 
       empty ++ canvas ++ quiet
     end
+
+    defp wire?(e),
+      do:
+        Map.has_key?(e.attrs, "phx-click") or
+          Enum.any?(Map.keys(e.attrs), &String.starts_with?(&1, "phx-value-"))
 
     defp live_region?(e),
       do: Map.has_key?(e.attrs, "aria-live") or Html.attr(e, "role") in ~w(status alert log)

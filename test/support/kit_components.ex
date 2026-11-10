@@ -5,6 +5,10 @@ defmodule Macaw.Component.Test.Kit do
 
   def drawn_or(%{drawn: :live}, live), do: {:safe, live}
   def drawn_or(%{drawn: state, context: context}, _live), do: Drawn.render(state, context)
+
+  # Client.event/3's attributes as markup text.
+  def wire(attrs),
+    do: attrs |> Phoenix.HTML.attributes_escape() |> Phoenix.HTML.safe_to_string()
 end
 
 defmodule Macaw.Component.Test.Honest.Prose do
@@ -12,7 +16,7 @@ defmodule Macaw.Component.Test.Honest.Prose do
   # Content with headings from the context, ids from the instance, a slot and a bindable
   # parameter it never reads in its declarations, set by a default action.
   use Macaw.Component, name: "test.honest.prose", kinds: [:content]
-  alias Macaw.Component.{Context, Test.Kit}
+  alias Macaw.Component.{Client, Context, Test.Kit}
 
   @impl true
   def parameters,
@@ -47,7 +51,9 @@ defmodule Macaw.Component.Test.Honest.Prose do
     Kit.drawn_or(
       assigns,
       ~s(<article id="#{Context.id(ctx, "body")}"><#{h}>Notes</#{h}><p>Some prose.</p>) <>
-        ~s(<section id="#{Context.id(ctx, "s-1")}"><#{h2}>First</#{h2}><p>More.</p></section></article>)
+        ~s(<section id="#{Context.id(ctx, "s-1")}"><#{h2}>First</#{h2}><p>More.</p>) <>
+        ~s(<button type="button"#{Kit.wire(Client.event(ctx, "open", value: %{"emphasis" => "strong"}, identity: %{"sectionId" => "s-1"}))}>Open</button>) <>
+        ~s(</section></article>)
     )
   end
 end
@@ -190,7 +196,7 @@ defmodule Macaw.Component.Test.Broken do
   @moduledoc false
   # Honest in every kind unless its "flaw" setting names a rule to break.
   use Macaw.Component, name: "test.broken", kinds: [:navigation, :content, :control, :container]
-  alias Macaw.Component.{Context, Drawn}
+  alias Macaw.Component.{Client, Context, Drawn, Test.Kit}
 
   @flaws ~w(none impure reads_bindable no_nav unnamed_nav menu_role no_control no_container
             canvas hook_everywhere script_everywhere live_region token empty style_attribute
@@ -198,7 +204,7 @@ defmodule Macaw.Component.Test.Broken do
             fixed_heading top_h3 img_no_alt unnamed_button bad_state dangling_reference
             unnamed_svg positive_tabindex composite_two_stops literal_fill bad_cue
             duplicate_id unstable_id unprefixed_id blank_drawn bad_budget bad_order
-            bad_action)
+            bad_action wire_everywhere undeclared_wire foreign_wire bad_wire)
 
   def flaws, do: @flaws
 
@@ -213,6 +219,9 @@ defmodule Macaw.Component.Test.Broken do
   @impl true
   def declarations(%{"flaw" => "impure"}), do: {:ok, events: ["e#{System.unique_integer()}"]}
   def declarations(%{"flaw" => "reads_bindable", "mood" => mood}), do: {:ok, events: [mood]}
+
+  # A wire naming a declared event, from another instance.
+  def declarations(%{"flaw" => "foreign_wire"}), do: {:ok, events: ["pick"]}
 
   # An action setting a parameter that isn't bindable.
   def declarations(%{"flaw" => "bad_action"}),
@@ -292,6 +301,16 @@ defmodule Macaw.Component.Test.Broken do
        do: ""
 
   defp extra("canvas", _ctx), do: "<canvas></canvas>"
+  defp extra("wire_everywhere", _ctx), do: ~s(<button type="button" phx-click="go">Go</button>)
+
+  defp extra("undeclared_wire", ctx),
+    do: ~s(<button type="button"#{Kit.wire(Client.event(ctx, "ghost"))}>Go</button>)
+
+  defp extra("foreign_wire", ctx),
+    do:
+      ~s(<button type="button"#{Kit.wire(Client.event(%{ctx | instance: "other"}, "pick"))}>Go</button>)
+
+  defp extra("bad_wire", _ctx), do: ~s(<button type="button" phx-value-mw="nope">Go</button>)
   defp extra("hook_everywhere", _ctx), do: ~s(<div phx-hook="Chart"></div>)
   defp extra("script_everywhere", _ctx), do: ~s(<script src="/app.js"></script>)
   defp extra("live_region", _ctx), do: ~s(<div aria-live="polite"></div>)

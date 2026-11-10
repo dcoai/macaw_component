@@ -240,7 +240,9 @@ defmodule Macaw.Component.RenderingTest do
   @tag verifies: "modes-table"
   test "all/0 is the four in order, and allows?/2 answers the table" do
     assert Mode.all() == [:live, :socketless, :neutral, :print]
-    assert Mode.features() == [:canvas, :hooks, :scripts, :tokens, :live_regions, :per_viewer]
+
+    assert Mode.features() ==
+             [:canvas, :hooks, :scripts, :tokens, :live_regions, :per_viewer, :events]
 
     for feature <- Mode.features() do
       assert Mode.allows?(:live, feature)
@@ -369,6 +371,48 @@ defmodule Macaw.Component.RenderingTest do
 
     assert Client.announce_event() == "macaw:announce"
     assert Client.bus_name() == "MacawBus"
+  end
+
+  @tag verifies: "client-events"
+  test "the event wire: phx-click and one JSON payload where events work, nothing elsewhere" do
+    assert {Client.event_name(), Client.event_attribute()} == {"mw-event", "phx-value-mw"}
+
+    identity = %{"hostName" => "api", "port" => 443}
+    value = %{"sort" => "p50", "order" => "desc", "by" => [1, 2.5, true, nil]}
+
+    for mode <- [:live, :socketless] do
+      assert [{"phx-click", "mw-event"}, {"phx-value-mw", json}] =
+               Client.event(context(mode: mode), "sort", value: value, identity: identity)
+
+      # Names keep their case and a map value its shape.
+      assert JSON.decode!(json) == %{
+               "instance" => "c1",
+               "name" => "sort",
+               "value" => value,
+               "identity" => identity
+             }
+
+      assert [_, {_, bare}] = Client.event(context(mode: mode), "open")
+      assert JSON.decode!(bare) == %{"instance" => "c1", "name" => "open"}
+      assert Mode.allows?(mode, :events)
+    end
+
+    for mode <- [:neutral, :print] do
+      assert Client.event(context(mode: mode), "sort", value: "p50") == []
+      refute Mode.allows?(mode, :events)
+    end
+
+    # What isn't JSON data is the function's contract: a wrong call. (Built at runtime, so
+    # the type checker can't see it.)
+    [time, atom] = Enum.shuffle([DateTime.utc_now()]) ++ Enum.shuffle([:p50])
+    [empty] = Enum.shuffle([""])
+
+    for bad <- [[value: time], [value: atom], [value: %{atom => 1}], [identity: %{"a" => [1]}]] do
+      assert_raise FunctionClauseError, fn -> Client.event(context(), "sort", bad) end
+    end
+
+    assert_raise FunctionClauseError, fn -> Client.event(context(), empty) end
+    assert_raise ArgumentError, fn -> Client.event(context(), "sort", target: "x") end
   end
 
   @tag verifies: "client-attributes"

@@ -216,6 +216,18 @@ if Code.ensure_loaded?(LazyHTML) do
     defp words({:ignores_binding, slot}),
       do: "does not read the fields bound in #{inspect(slot)} from the context's bindings"
 
+    defp words({:event_wire, el}),
+      do: "#{el} carries the event wire (phx-click or phx-value-) where events are inert"
+
+    defp words({:bad_event_payload, text}),
+      do: "an event wire's payload is not the event as JSON: #{inspect(text)}"
+
+    defp words({:undeclared_event, name}),
+      do: "emits #{inspect(name)}, which its declarations don't declare"
+
+    defp words({:foreign_instance, id}),
+      do: "an event wire names instance #{inspect(id)}, not its context's"
+
     defp words(other), do: inspect(other)
 
     defp kit_words(:not_a_component), do: "is not a component: it doesn't use Macaw.Component"

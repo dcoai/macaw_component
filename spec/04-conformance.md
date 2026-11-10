@@ -33,9 +33,9 @@ use writes one test per check into a describe block, refuses a missing component
 
 | Check | Holds |
 |---|---|
-| `:declarations` | `parameters/1` answers `{:ok, _}`; each fixture's settings pass `settings/2`; `declarations/2` answers `{:ok, _}` for each; two calls with equal settings answer equal declarations; changing a bindable parameter changes no declaration (01 §1.1); every event a fixture names in `events:` is declared |
+| `:declarations` | `parameters/1` answers `{:ok, _}`; each fixture's settings pass `settings/2`; `declarations/2` answers `{:ok, _}` for each; two calls with equal settings answer equal declarations; changing a bindable parameter changes no declaration (01 §1.1); every event a fixture names in `events:` is declared; every event wire a live or socketless render carries (02 §8.3) holds a JSON object of `instance`, `name` and optional `value` and `identity` (`{:bad_event_payload, text}`), names a declared event (`{:undeclared_event, name}`) and the context's instance (`{:foreign_instance, id}`) |
 | `:kinds` | each declared kind renders, to its kind's rules (02 §4) |
-| `:modes` | every mode renders something; no `<canvas>` outside live; no `phx-hook`, `<script>`, live region (`aria-live`, `role` `status`, `alert` or `log`), drawn token (`data-mw-token`) or CSRF token in neutral or print (02 §3) |
+| `:modes` | every mode renders something; no `<canvas>` outside live; no `phx-hook`, `<script>`, live region (`aria-live`, `role` `status`, `alert` or `log`), drawn token (`data-mw-token`), CSRF token or event wire (`phx-click`, a `phx-value-` attribute) in neutral or print (02 §3) |
 | `:delivery` | no `style` attribute, `<style>`, inline `<script>`, `on…` attribute or `javascript:` URL; every `src`, `srcset`, `poster`, `action` and SVG `href` same-origin (02 §5) |
 | `:headings` | the component's top headings are at the context's level, and rendering at level 3 moves every heading one level down, stopping at `h6` |
 | `:names` | every `<img>` has `alt`; every `role="img"` and `<svg role="img">` is named; every button, link and form control is named (text, `aria-label`, `aria-labelledby`, `title`, or for a control a `<label>`); `aria-pressed`, `aria-expanded`, `aria-current` and `aria-busy` take their legal values; every `aria-labelledby`, `aria-describedby` and `aria-controls` names an element of the render |

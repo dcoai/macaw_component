@@ -9,7 +9,7 @@ defmodule Macaw.Component.Mode do
   """
 
   @modes [:live, :socketless, :neutral, :print]
-  @features [:canvas, :hooks, :scripts, :tokens, :live_regions, :per_viewer]
+  @features [:canvas, :hooks, :scripts, :tokens, :live_regions, :per_viewer, :events]
 
   @allowed %{
     live: MapSet.new(@features),

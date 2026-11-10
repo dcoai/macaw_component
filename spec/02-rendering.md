@@ -83,8 +83,9 @@ The modes and each mode's rules are `macaw_component`'s (macaw_compose#137): a c
 | `:tokens` (drawn tokens, [macaw_data 01 §8.1](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event-rules); CSRF tokens) | yes | yes | no | no |
 | `:live_regions` | yes | yes | no | no |
 | `:per_viewer` (markup that differs by viewer) | yes | yes | no | no |
+| `:events` (the event wire, `phx-click` and `phx-value-*`, §8.3) | yes | yes | no | no |
 
-A socketless render keeps its hooks because it is also the first render of a live page: the hooks attach when the socket connects, and do nothing until then. The mode and the feature are `Mode.allows?/2`'s contract, stated as guards: an unknown one fails as any wrong call does (`FunctionClauseError`), a programming error, not data (#33).
+A socketless render keeps its hooks and its event wire because it is also the first render of a live page: the hooks attach, and the wire works, when the socket connects, and both do nothing until then. The mode and the feature are `Mode.allows?/2`'s contract, stated as guards: an unknown one fails as any wrong call does (`FunctionClauseError`), a programming error, not data (#33).
 
 ```test:modes-table
 all/0 is the four modes in order and allows?/2 answers the table for every mode and feature, raising for an unknown one
@@ -221,3 +222,17 @@ the package's files include priv, so the module ships on Hex
 ```
 
 **Gap:** the module's behavior in a browser (finding and creating the regions, queuing, merging, rate-limiting, dropping, the bus's delivery and refusals) is **untested** until the example app's keyboard and axe-core CI exists ([macaw_compose 10 §4](https://github.com/dcoai/macaw/blob/main/spec/10-web.md#web-a11y)). The tests here read the module as text: its place, its names and the presence of its refusals.
+
+### 8.3 The event wire {#components-client-events}
+
+**An event travels from the browser to the host as one LiveView event, the same for every component** (#39, [macaw_compose 03 §1.6](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-wire)), so a host writes one `handle_event/3` for a whole surface, and a component renders it the same on a Macaw page and off one. It needs no hook and no asset.
+- **`Client.event(context, name, opts)`** answers the attributes that make an element emit the event, a list of `{name, value}` pairs for HEEx to splice into the tag: `<button type="button" {Client.event(@context, "sort", value: "p50")}>`.
+  - **In `:live` and `:socketless`** (the `:events` feature, §3): `phx-click` is `event_name/0`, `"mw-event"`, and `phx-value-mw` (`event_attribute/0`) holds the event as JSON: `{"instance": id, "name": name}` with `"value"` and `"identity"` when given. `instance` is always the context's.
+  - **In `:neutral` and `:print`** it answers `[]`, so the element is inert there.
+  - **One JSON attribute, not a `phx-value-` per field,** because HTML lower-cases attribute names: a `phx-value-hostName` would arrive as `hostname`. JSON is its encoding at the edge, as for 8.1's attributes.
+- **What it carries is JSON data.** `value:` is a string, a number, a boolean, `nil`, or a list or a string-keyed map of these; `identity:` is a string-keyed map of scalars. A time travels as its ISO 8601 spelling. Anything else, an empty or non-string name, or another option is the function's contract, a wrong call (`FunctionClauseError` or `ArgumentError`), as 00 §4 states.
+- **The kit checks it** (04 §2): `:modes` finds `phx-click` or a `phx-value-` attribute in neutral or print (`{:event_wire, element}`), and `:declarations` reads every rendered `phx-value-mw` in live and socketless: one that isn't such a JSON object is `{:bad_event_payload, text}`, a name the component doesn't declare `{:undeclared_event, name}`, and another instance than the context's `{:foreign_instance, id}`.
+
+```test:client-events
+event/3 answers phx-click mw-event and a JSON phx-value-mw in live and socketless, with the context's instance and the value and identity given, keeping names' case and a map's shape, and nothing in neutral and print; a term that isn't JSON data is a wrong call
+```

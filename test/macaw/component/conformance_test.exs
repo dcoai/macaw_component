@@ -203,6 +203,14 @@ defmodule Macaw.Component.ConformanceTest do
     end)
 
     finds?("canvas", :modes, &(&1 == :canvas))
+    finds?("wire_everywhere", :modes, &match?({:event_wire, _}, &1))
+    finds?("undeclared_wire", :declarations, &match?({:undeclared_event, "ghost"}, &1))
+
+    assert Enum.uniq(whats(broken("foreign_wire", :declarations))) == [
+             {:foreign_instance, "other"}
+           ]
+
+    finds?("bad_wire", :declarations, &match?({:bad_event_payload, "nope"}, &1))
     finds?("empty", :modes, &(&1 == :empty))
     finds?("hook_everywhere", :modes, &match?({:hook, _}, &1))
     finds?("script_everywhere", :modes, &match?({:script, _}, &1))
