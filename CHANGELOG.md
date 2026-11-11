@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## v0.11.0 (2026-11-11)
+
+**Event links: controls that work with no socket** (#48). A host can give the context a link builder, and a component then renders a control as a plain `<a href>` before the socket connects, so a click works on a page served without one. Nothing breaks: a component that doesn't ask for a link renders as before.
+
+### Upgrading from 0.10.x
+
+1. **Depend on `macaw_component ~> 0.11.0`.** No call changes.
+2. **Code that lists every context field** sees one more: `Context.fields/0` has `link`.
+3. **To make a control work before the socket connects,** give the context a `link` builder and render `<a href={Client.link(@context, name, value: v)}>` when it answers an `href`, and the button `Client.event/3` makes when it answers `nil` (spec/02 §8.4).
+
+### Changes
 
 - **New: event links, for controls that work with no socket** (#48, #49, spec/02 §8.4). The context gains `link`, the host's link builder: `nil`, or a function of one argument from an event (`%{instance:, name:, value:, identity:}`, as terms) to the `href` it would give. `Client.link(context, name, opts)` answers that `href` in `:socketless`, and `nil` in every other mode or with no builder, so a component renders the control as `<a href>` before the socket connects and as the button `event/3` makes once it does. A link carries no event wire. `Context.new/1` refuses a `link` that isn't a function of one argument, `{[:link], :not_a_function}`. Nothing changes for a component that doesn't call it.
 
