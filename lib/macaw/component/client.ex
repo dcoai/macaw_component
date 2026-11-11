@@ -138,6 +138,53 @@ defmodule Macaw.Component.Client do
       else: []
   end
 
+  @typedoc "What a context's link builder is handed (spec/02 §8.4): the event, as terms."
+  @type link_event :: %{instance: String.t(), name: String.t(), value: term(), identity: term()}
+
+  @doc """
+  The `href` an event would give (spec/02 §8.4), for a control that works with no socket:
+  in `:socketless`, what the context's link builder answers for the event, the context's
+  instance, the name, and `value:` and `identity:` as `event/3` takes them; `nil` in every
+  other mode, and with no builder. A component that has one renders the control as
+  `<a href>`, carrying no event wire; with `nil` it renders the control `event/3` makes.
+
+  Only `:socketless` links: once the socket connects the page renders `:live`, where the
+  control is the button again, so a link is the first render's and a socketless visit's
+  alone. It carries no `phx-click`, since LiveView would both push the event and follow a
+  real `href`. A builder answering anything but a string or `nil` is a wrong call.
+
+      iex> attrs = [instance: "status-table", size: {640, 400}, now: ~U[2026-11-10 12:00:00Z]]
+      iex> link = fn %{name: name, value: %{"sort" => sort}} -> "/status?" <> name <> "=" <> sort end
+      iex> {:ok, socketless} = Macaw.Component.Context.new([mode: :socketless, link: link] ++ attrs)
+      iex> Macaw.Component.Client.link(socketless, "sort", value: %{"sort" => "p50"})
+      "/status?sort=p50"
+      iex> {:ok, live} = Macaw.Component.Context.new([mode: :live, link: link] ++ attrs)
+      iex> Macaw.Component.Client.link(live, "sort", value: %{"sort" => "p50"})
+      nil
+  """
+  @spec link(Context.t(), String.t(), keyword()) :: String.t() | nil
+  def link(%Context{} = context, name, opts \\ [])
+      when is_binary(name) and name != "" and is_list(opts) do
+    opts = Keyword.validate!(opts, [:value, :identity])
+
+    case context do
+      %Context{mode: :socketless, link: link} when is_function(link, 1) ->
+        event = %{
+          instance: context.instance,
+          name: name,
+          value: Keyword.get(opts, :value),
+          identity: Keyword.get(opts, :identity)
+        }
+
+        href!(link.(event))
+
+      _no_link ->
+        nil
+    end
+  end
+
+  defp href!(href) when is_binary(href) or is_nil(href), do: href
+
   defp put_given(payload, opts, key, judge) do
     case Keyword.fetch(opts, key) do
       {:ok, value} -> Map.put(payload, Atom.to_string(key), judge.(value))

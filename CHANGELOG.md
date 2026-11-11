@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **New: event links, for controls that work with no socket** (#48, #49, spec/02 §8.4). The context gains `link`, the host's link builder: `nil`, or a function of one argument from an event (`%{instance:, name:, value:, identity:}`, as terms) to the `href` it would give. `Client.link(context, name, opts)` answers that `href` in `:socketless`, and `nil` in every other mode or with no builder, so a component renders the control as `<a href>` before the socket connects and as the button `event/3` makes once it does. A link carries no event wire. `Context.new/1` refuses a `link` that isn't a function of one argument, `{[:link], :not_a_function}`. Nothing changes for a component that doesn't call it.
+
 ## v0.10.0 (2026-11-10)
 
 **The event wire at the edge** (#44). JSON is the wire's representation, and `Client.event/3` is its outbound edge: a component hands it terms, never a JSON spelling. A hook can now send an event it works out in the browser. Nothing breaks: every call that worked before writes the same payload.

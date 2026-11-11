@@ -10,7 +10,9 @@ defmodule Macaw.Component.Context do
   `Macaw.Component.Slot.resolve/3` resolves it, so a component reads the field bound to a
   role with `field/3` and never repeats the defaulting rule. `schemas` is
   `%{slot => Macaw.Data.Schema.t()}`, the schema each bound slot's source describes, so a
-  component heads a field with its `label/3` and `unit/3`.
+  component heads a field with its `label/3` and `unit/3`. `link` is the host's link
+  builder, set in `:socketless` when the host keeps state in the URL: a component asks it
+  for the `href` an event would give with `Macaw.Component.Client.link/3`, never directly.
 
       iex> {:ok, ctx} = Macaw.Component.Context.new(mode: :live, instance: "cards-1", size: {640, 400}, now: ~U[2026-10-28 12:00:00Z])
       iex> {Macaw.Component.Context.heading(ctx, 0), Macaw.Component.Context.heading(ctx, 1)}
@@ -37,7 +39,8 @@ defmodule Macaw.Component.Context do
     :preferences,
     :now,
     :bindings,
-    :schemas
+    :schemas,
+    :link
   ]
   @required [:mode, :instance, :size, :now]
   @local ~r/\A[A-Za-z0-9_-]+\z/
@@ -53,7 +56,8 @@ defmodule Macaw.Component.Context do
             preferences: %{zone: "Etc/UTC", units: :as_posted, shortcuts: %{}},
             now: nil,
             bindings: %{},
-            schemas: %{}
+            schemas: %{},
+            link: nil
 
   @type t :: %__MODULE__{
           mode: Mode.t(),
@@ -66,7 +70,8 @@ defmodule Macaw.Component.Context do
           preferences: %{zone: String.t(), units: atom(), shortcuts: map()},
           now: DateTime.t(),
           bindings: %{String.t() => %{String.t() => String.t() | [String.t(), ...]}},
-          schemas: %{String.t() => Schema.t()}
+          schemas: %{String.t() => Schema.t()},
+          link: (Macaw.Component.Client.link_event() -> String.t() | nil) | nil
         }
 
   @doc "The fields, in the order of spec/02 §2's table."
@@ -81,7 +86,8 @@ defmodule Macaw.Component.Context do
   that is not a non-empty string, `:not_a_field` for a field that is neither a non-empty
   string nor a non-empty list of them. A bad `schemas` is a fault under `[:schemas]`:
   `:not_a_map`, `:bad_name` for a slot, `:not_a_schema` for a value that is no
-  `%Macaw.Data.Schema{}`.
+  `%Macaw.Data.Schema{}`. A `link` that is neither `nil` nor a function of one argument is
+  `{[:link], :not_a_function}`.
   """
   @spec new(keyword() | map()) :: {:ok, t()} | {:error, [Macaw.Component.fault(), ...]}
   def new(attrs) when is_list(attrs) or is_map(attrs) do
@@ -139,6 +145,9 @@ defmodule Macaw.Component.Context do
   defp fault(:theme, _theme), do: :not_a_theme
   defp fault(:now, %DateTime{}), do: nil
   defp fault(:now, _now), do: :not_a_datetime
+  defp fault(:link, nil), do: nil
+  defp fault(:link, link) when is_function(link, 1), do: nil
+  defp fault(:link, _link), do: :not_a_function
 
   defp fault(:preferences, %{zone: zone, units: units, shortcuts: shortcuts} = p)
        when map_size(p) == 3 do

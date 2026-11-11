@@ -81,7 +81,8 @@ defmodule Macaw.Component.RenderingTest do
                :preferences,
                :now,
                :bindings,
-               :schemas
+               :schemas,
+               :link
              ]
 
     assert {:error, faults} =
@@ -371,6 +372,56 @@ defmodule Macaw.Component.RenderingTest do
 
     assert Client.announce_event() == "macaw:announce"
     assert Client.bus_name() == "MacawBus"
+  end
+
+  @tag verifies: "client-links"
+  test "an event link: the builder's href in socketless, nil everywhere else" do
+    test = self()
+
+    link = fn event ->
+      send(test, {:asked, event})
+      if event.name == "sort", do: "/status?sort=" <> event.value["sort"], else: nil
+    end
+
+    socketless = context(mode: :socketless, link: link)
+
+    assert Client.link(socketless, "sort", value: %{"sort" => "p50"}) == "/status?sort=p50"
+
+    assert_received {:asked,
+                     %{instance: instance, name: "sort", value: %{"sort" => "p50"}, identity: nil}}
+
+    assert instance == socketless.instance
+
+    # The terms reach the builder as they are: an identity's DateTime stays one.
+    t = ~U[2026-11-11 10:00:00.250Z]
+    assert Client.link(socketless, "select", identity: %{"t" => t}) == nil
+    assert_received {:asked, %{name: "select", identity: %{"t" => ^t}, value: nil}}
+
+    # Only socketless links; with no builder, none.
+    for mode <- [:live, :neutral, :print] do
+      assert Client.link(context(mode: mode, link: link), "sort", value: %{"sort" => "p50"}) ==
+               nil
+    end
+
+    refute_received {:asked, _event}
+    assert Client.link(context(mode: :socketless), "sort", value: %{"sort" => "p50"}) == nil
+
+    # A link that isn't a function of one argument is refused by the context.
+    for bad <- [fn -> "/" end, "/status", :link] do
+      assert {:error, [{[:link], :not_a_function}]} =
+               Context.new(
+                 mode: :socketless,
+                 instance: "t",
+                 size: {1, 1},
+                 now: ~U[2026-11-11 00:00:00Z],
+                 link: bad
+               )
+    end
+
+    # A builder answering anything but a string or nil is the host's bug: a wrong call.
+    broken = context(mode: :socketless, link: fn _event -> 7 end)
+    assert_raise FunctionClauseError, fn -> Client.link(broken, "sort", value: "p50") end
+    assert_raise ArgumentError, fn -> Client.link(socketless, "sort", bogus: 1) end
   end
 
   @tag verifies: "client-events"

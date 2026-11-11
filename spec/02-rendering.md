@@ -38,6 +38,7 @@ assigns are built from the six keys, a missing or unknown key is a fault, and a 
 | `now` | the holder's now, a `DateTime`, which events carry as their time | required |
 | `bindings` | the cell's resolved bindings, `%{slot => %{role => field \| [field, …]}}`: slot and role names and fields are non-empty strings, a `many` role's fields a non-empty list | `%{}` |
 | `schemas` | each bound slot's schema, `%{slot => %Macaw.Data.Schema{}}`: the schema its source describes | `%{}` |
+| `link` | the host's link builder (§8.4): `nil`, or a function of one argument from an event to the `href` it would give; a component reads it only through `Client.link/3` | `nil` |
 
 - **The host computes it.** On a page, the core computes each instance's context; elsewhere (a visualize chart in a plain LiveView, a test) the adopter builds one. The component never knows which ([macaw_compose 05 §7](https://github.com/dcoai/macaw/blob/main/spec/05-components.md#components-libraries)).
 - **`now` is never a clock read** by the component: a Macaw surface supplies its own clock, which tests and replays control. A standalone holder may default its now to the wall clock, injectably ([macaw_data 01 §8.1](https://github.com/dcoai/macaw_data/blob/main/spec/01-sources.md#sources-event-rules)).
@@ -245,4 +246,17 @@ the package's files include priv, so the module ships on Hex
 
 ```test:client-events
 event/3 answers phx-click mw-event and a JSON phx-value-mw in live and socketless, with the context's instance and the value and identity given, keeping names' case and a map's shape, a DateTime in value or identity written as its UTC ISO 8601 spelling from any zone, a point as [lon, lat] and a literal color as its CSS hex, and nothing in neutral and print; another struct, a theme color or an atom is a wrong call
+```
+
+### 8.4 Event links {#components-client-links}
+
+**A control works with no socket when the host can say where the event would lead** (#48, for [macaw_compose 03 §3](https://github.com/dcoai/macaw/blob/main/spec/03-state.md#state-persistence)): a host that keeps state in the URL knows the URL a page would have after an event, and only it does, since it applies the event and writes the state. A component knows only the event it would emit.
+- **The context carries the host's link builder,** `link` (§2): `nil`, or a function of one argument, handed `%{instance:, name:, value:, identity:}` (the event, as terms) and answering the `href` it would give, or `nil` for an event it has no link for. `Context.new/1` refuses any other `link` as `{[:link], :not_a_function}`. The core sets it in `:socketless` when the host persists state in the URL.
+- **`Client.link(context, name, opts)`** answers that `href`: the builder's answer for the context's instance, the name, and `value:` and `identity:` as `event/3` takes them, **in `:socketless` alone**, and `nil` in every other mode or with no builder. A builder answering anything but a string or `nil` is a wrong call: it is the host's code, not data.
+- **A component with a link renders the control as `<a href>`,** and with `nil` the control `event/3` makes. Link or button, and its markup, stay the component's; a component that never calls `link/3` is unchanged.
+- **A link carries no event wire.** LiveView's click binding prevents the default only for `href="#"`, so a link with `phx-click` and a real `href` would both push the event and navigate. It needs none: once the socket connects the page renders `:live`, where `link/3` answers `nil` and the control is the button again, so a link is a socketless visit's and the first render's alone.
+- **Nothing for the kit to check.** `:navigation` components render their own `<a href>` (§4), so an `href` can't be traced to `link/3`; `link/3` answering `nil` outside `:socketless` holds the rule by construction.
+
+```test:client-links
+link/3 answers the builder's href for the event's terms in socketless, and nil in live, neutral and print and with no builder; Context.new/1 refuses a link that isn't a function of one argument; a builder answering neither a string nor nil is a wrong call
 ```
